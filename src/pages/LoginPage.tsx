@@ -28,7 +28,7 @@ export const LoginPage: React.FC = () => {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-4">
             <span className="text-3xl">🎬</span>
-            <span className="font-bold text-2xl" style={{ color: 'var(--accent)' }}>MediaHub</span>
+            <span className="font-bold text-2xl" style={{ color: 'var(--accent)' }}>SeanLink</span>
           </div>
           <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>어드민 로그인</h2>
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>관리자 계정으로 로그인하세요</p>

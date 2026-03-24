@@ -20,7 +20,7 @@ export const Navbar: React.FC = () => {
         <Link to="/videos" className="flex items-center gap-2 mr-8">
           <span className="text-2xl">🎬</span>
           <span className="font-bold text-base tracking-tight" style={{ color: 'var(--accent)' }}>
-            MediaHub
+            SeanLink
           </span>
         </Link>
 
