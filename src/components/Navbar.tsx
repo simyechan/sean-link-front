@@ -16,11 +16,11 @@ export const Navbar: React.FC = () => {
     <nav style={{ backgroundColor: 'var(--bg-nav)', borderBottom: '1px solid var(--border)' }}
       className="fixed top-0 left-0 right-0 z-50">
       <div className="max-w-screen-2xl mx-auto px-6 h-20 flex items-center justify-between">
-      <Link to="/videos" className="flex items-center gap-3 mr-10">
+      <Link to="/videos" className="flex items-center gap-3 mr-10 leading-none">
         <img
           src="/logo.png"
           alt="SeanLink Logo"
-          className="w-16 h-16 object-contain transition-transform duration-200 hover:scale-110"
+          className="w-16 h-16 object-contain -translate-y-1 transition-transform duration-200 hover:scale-110"
         />
         <span className="font-bold text-xl tracking-tight text-[var(--accent)]">
           SeanLink
