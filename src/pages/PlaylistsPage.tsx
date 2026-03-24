@@ -60,7 +60,16 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
               <span className="text-sm w-6 text-center flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{idx + 1}</span>
               {video.thumbnail
                 ? <img src={video.thumbnail} alt="" className="w-32 aspect-video object-cover rounded-lg flex-shrink-0" />
-                : <div className="w-32 aspect-video rounded-lg flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-muted)' }}>🎬</div>
+                : <div
+                    className="w-32 aspect-video rounded-lg flex-shrink-0 flex items-center justify-center"
+                    style={{ backgroundColor: 'var(--bg-card)' }}
+                  >
+                    <img
+                      src="/logo.png"
+                      alt="영상 없음"
+                      className="w-12 h-12 object-contain opacity-70"
+                    />
+                  </div>
               }
               <div className="flex-1 min-w-0">
                 <a href={video.videoUrl ?? '#'} target="_blank" rel="noreferrer" className="block text-sm font-medium line-clamp-2 hover:opacity-70 transition-opacity" style={{ color: 'var(--text-primary)' }}>
@@ -122,7 +131,7 @@ export const PlaylistsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen pt-14" style={{ backgroundColor: 'var(--bg-base)' }}>
-      <div className="max-w-screen-2xl mx-auto px-4 py-6">
+      <div className="max-w-screen-2xl mx-auto px-4 pt-12 pb-6">
         <form onSubmit={handleSearch} className="flex flex-wrap gap-2 mb-6">
           <input type="text" placeholder="플레이리스트 이름 검색..." value={keyword} onChange={e => setKeyword(e.target.value)} style={inputStyle} className="flex-1 min-w-48 px-4 py-2 rounded-lg text-sm placeholder-gray-500 focus:outline-none" />
           <input type="text" placeholder="태그 필터" value={tagName} onChange={e => setTagName(e.target.value)} style={inputStyle} className="w-36 px-4 py-2 rounded-lg text-sm placeholder-gray-500 focus:outline-none" />
@@ -148,7 +157,11 @@ export const PlaylistsPage: React.FC = () => {
           </div>
         ) : playlists.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-40" style={{ color: 'var(--text-muted)' }}>
-            <div className="text-6xl mb-4">📋</div><p>플레이리스트가 없어요.</p>
+            <img
+              src="/logo.png"
+              alt="빈 플레이리스트"
+              className="w-[300px] sm:w-[400px] lg:w-[500px] h-auto mb-4 opacity-20 grayscale"
+            />
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -164,7 +177,13 @@ export const PlaylistsPage: React.FC = () => {
                       ))}
                     </div>
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-3xl" style={{ color: 'var(--text-muted)' }}>📋</div>
+                    <div className="w-full h-full flex items-center justify-center">
+                      <img
+                        src="/logo.png"
+                        alt="빈 플레이리스트"
+                        className="w-16 h-16 object-contain opacity-70"
+                      />
+                    </div>
                   )}
                   <div className="absolute bottom-1 right-1 text-white text-xs px-1.5 py-0.5 rounded flex items-center gap-1" style={{ backgroundColor: 'rgba(0,0,0,0.75)' }}>
                     <span>▶</span><span>{playlist.videos.length}</span>

@@ -65,7 +65,7 @@ export const VideosPage: React.FC = () => {
 
         {/* Filter Bar */}
         <form onSubmit={handleSearch} className="flex flex-wrap gap-2 mb-6">
-          <input type="text" placeholder="채널, 영상 검색..." value={keyword} onChange={e => setKeyword(e.target.value)} style={inputStyle} className="flex-1 min-w-48 px-4 py-2 rounded-lg text-sm placeholder-gray-500 focus:outline-none" />
+          <input type="text" placeholder="영상 검색..." value={keyword} onChange={e => setKeyword(e.target.value)} style={inputStyle} className="flex-1 min-w-48 px-4 py-2 rounded-lg text-sm placeholder-gray-500 focus:outline-none" />
           <input type="text" placeholder="태그 필터" value={tagName} onChange={e => setTagName(e.target.value)} style={inputStyle} className="w-36 px-4 py-2 rounded-lg text-sm placeholder-gray-500 focus:outline-none" />
           <select value={`${sortBy}_${sortOrder}`} onChange={e => { const [by, order] = e.target.value.split('_'); setSortBy(by as VideoSortBy); setSortOrder(order as SortOrder); }} style={inputStyle} className="px-3 py-2 rounded-lg text-sm focus:outline-none">
             <option value="VIEW_COUNT_DESC">인기순</option>
@@ -111,7 +111,6 @@ export const VideosPage: React.FC = () => {
               alt="empty"
               className="w-[300px] sm:w-[400px] lg:w-[500px] h-auto mb-6 opacity-20 grayscale"
             />
-            <p>비디오가 없어요.</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
