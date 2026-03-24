@@ -1,0 +1,213 @@
+import { gql } from '@apollo/client';
+
+// ─── Tag Fragments ────────────────────────────────────────────
+export const TAG_FIELDS = gql`
+  fragment TagFields on TagModel {
+    id
+    name
+    createdAt
+  }
+`;
+
+// ─── Video Fragments ──────────────────────────────────────────
+export const VIDEO_FIELDS = gql`
+  fragment VideoFields on VideoModel {
+    id
+    videoId
+    videoUrl
+    videoTitle
+    thumbnail
+    duration
+    channelId
+    channelName
+    channelImageUrl
+    viewCount
+    platform
+    tags {
+      id
+      name
+    }
+  }
+`;
+
+// ─── Playlist Fragments ───────────────────────────────────────
+export const PLAYLIST_FIELDS = gql`
+  fragment PlaylistFields on PlaylistModel {
+    id
+    name
+    viewCount
+    tags {
+      id
+      name
+    }
+    videos {
+      ...VideoFields
+    }
+  }
+  ${VIDEO_FIELDS}
+`;
+
+// ─── Tag Queries ──────────────────────────────────────────────
+export const GET_ALL_TAGS = gql`
+  query GetAllTags($keyword: String, $sortBy: TagSortBy, $sortOrder: SortOrder, $page: Int, $limit: Int) {
+    getAllTags(keyword: $keyword, sortBy: $sortBy, sortOrder: $sortOrder, page: $page, limit: $limit) {
+      ...TagFields
+    }
+  }
+  ${TAG_FIELDS}
+`;
+
+export const GET_TAG_BY_ID = gql`
+  query GetTagById($id: String!) {
+    getTagById(id: $id) {
+      ...TagFields
+      videos { ...VideoFields }
+      playlists { id name viewCount }
+    }
+  }
+  ${TAG_FIELDS}
+  ${VIDEO_FIELDS}
+`;
+
+// ─── Video Queries ────────────────────────────────────────────
+export const GET_ALL_VIDEOS = gql`
+  query GetAllVideos($keyword: String, $tagName: String, $sortBy: VideoSortBy, $sortOrder: SortOrder, $page: Int, $limit: Int) {
+    getAllVideos(keyword: $keyword, tagName: $tagName, sortBy: $sortBy, sortOrder: $sortOrder, page: $page, limit: $limit) {
+      ...VideoFields
+    }
+  }
+  ${VIDEO_FIELDS}
+`;
+
+export const GET_VIDEO_BY_ID = gql`
+  query GetVideoById($id: String!) {
+    getVideoById(id: $id) {
+      ...VideoFields
+    }
+  }
+  ${VIDEO_FIELDS}
+`;
+
+// ─── Playlist Queries ─────────────────────────────────────────
+export const GET_ALL_PLAYLISTS = gql`
+  query GetAllPlaylists($keyword: String, $tagName: String, $sortBy: PlaylistSortBy, $sortOrder: SortOrder, $page: Int, $limit: Int) {
+    getAllPlaylists(keyword: $keyword, tagName: $tagName, sortBy: $sortBy, sortOrder: $sortOrder, page: $page, limit: $limit) {
+      id
+      name
+      viewCount
+      tags { id name }
+      videos { id thumbnail videoTitle }
+    }
+  }
+`;
+
+export const GET_PLAYLIST_BY_ID = gql`
+  query GetPlaylistById($id: String!) {
+    getPlaylistById(id: $id) {
+      ...PlaylistFields
+    }
+  }
+  ${PLAYLIST_FIELDS}
+`;
+
+// ─── Tag Mutations ────────────────────────────────────────────
+export const ADD_TAG = gql`
+  mutation AddTag($tagInput: TagCreateInput!) {
+    addTag(tagInput: $tagInput) {
+      ...TagFields
+    }
+  }
+  ${TAG_FIELDS}
+`;
+
+export const DELETE_TAG = gql`
+  mutation DeleteTag($id: String!) {
+    deleteTag(id: $id)
+  }
+`;
+
+// ─── Video Mutations ──────────────────────────────────────────
+export const ADD_VIDEO = gql`
+  mutation AddVideo($url: String!, $tags: [String!]) {
+    addVideo(url: $url, tags: $tags) {
+      ...VideoFields
+    }
+  }
+  ${VIDEO_FIELDS}
+`;
+
+export const DELETE_VIDEO = gql`
+  mutation DeleteVideo($id: String!) {
+    deleteVideo(id: $id)
+  }
+`;
+
+// ─── Playlist Mutations ───────────────────────────────────────
+export const CREATE_PLAYLIST = gql`
+  mutation CreatePlaylist($data: PlaylistInput!, $videoIds: [String!], $tagNames: [String!]) {
+    createPlaylist(data: $data, videoIds: $videoIds, tagNames: $tagNames) {
+      ...PlaylistFields
+    }
+  }
+  ${PLAYLIST_FIELDS}
+`;
+
+export const ADD_VIDEO_TO_PLAYLIST = gql`
+  mutation AddVideoToPlaylist($playlistId: String!, $videoId: String!) {
+    addVideoToPlaylist(playlistId: $playlistId, videoId: $videoId) {
+      id
+      name
+    }
+  }
+`;
+
+export const ADD_VIDEOS_TO_PLAYLIST = gql`
+  mutation AddVideosToPlaylist($playlistId: String!, $videoIds: [String!]!) {
+    addVideosToPlaylist(playlistId: $playlistId, videoIds: $videoIds) {
+      id
+      name
+    }
+  }
+`;
+
+export const REORDER_PLAYLIST_VIDEOS = gql`
+  mutation ReorderPlaylistVideos($playlistId: String!, $videoIds: [String!]!) {
+    reorderPlaylistVideos(playlistId: $playlistId, videoIds: $videoIds) {
+      ...PlaylistFields
+    }
+  }
+  ${PLAYLIST_FIELDS}
+`;
+
+export const REMOVE_VIDEO_FROM_PLAYLIST = gql`
+  mutation RemoveVideoFromPlaylist($playlistId: String!, $videoId: String!) {
+    removeVideoFromPlaylist(playlistId: $playlistId, videoId: $videoId)
+  }
+`;
+
+export const DELETE_PLAYLIST = gql`
+  mutation DeletePlaylist($playlistId: String!) {
+    deletePlaylist(playlistId: $playlistId)
+  }
+`;
+
+// ─── Admin Mutations ──────────────────────────────────────────
+export const ADMIN_LOGIN = gql`
+  mutation AdminLogin($loginInput: AdminLoginInput!) {
+    adminLogin(loginInput: $loginInput) {
+      accessToken
+    }
+  }
+`;
+
+export const ADMIN_LOGOUT = gql`
+  mutation AdminLogout {
+    adminLogout
+  }
+`;
+
+export const ADMIN_REFRESH = gql`
+  mutation AdminRefresh {
+    adminRefresh
+  }
+`;

@@ -1,0 +1,36 @@
+{
+  "name": "mediahub-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@apollo/client": "^3.10.0",
+    "graphql": "^16.8.1",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "react-router-dom": "^6.23.1",
+    "react-scripts": "5.0.1",
+    "typescript": "^5.4.5"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.4.27",
+    "postcss": "^8.5.8",
+    "tailwindcss": "3"
+  }
+}
