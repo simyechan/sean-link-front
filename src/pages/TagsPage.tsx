@@ -40,8 +40,8 @@ export const TagsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen pt-14" style={{ backgroundColor: 'var(--bg-base)' }}>
-      <div className="max-w-screen-md mx-auto px-4 py-6">
+    <div className="min-h-screen pt-16" style={{ backgroundColor: 'var(--bg-base)' }}>
+      <div className="max-w-screen-md mx-auto px-4 pt-10 pb-6">
         <div className="mb-6">
           <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>태그 관리</h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>영상과 플레이리스트에 연결된 태그</p>
@@ -83,9 +83,12 @@ export const TagsPage: React.FC = () => {
             ))}
           </div>
         ) : tags.length === 0 ? (
-          <div className="flex flex-col items-center py-20" style={{ color: 'var(--text-muted)' }}>
-            <div className="text-5xl mb-3">🏷️</div>
-            <p>태그가 없어요.</p>
+          <div className="flex flex-col items-center py-24" style={{ color: 'var(--text-muted)' }}>
+            <img
+              src="/logo.png"
+              alt="태그 없음"
+              className="w-[300px] sm:w-[400px] lg:w-[500px] h-auto mb-4 opacity-20 grayscale"
+            />
           </div>
         ) : (
           <div className="space-y-1.5">
