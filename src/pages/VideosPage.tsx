@@ -60,7 +60,7 @@ export const VideosPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen pt-14" style={{ backgroundColor: 'var(--bg-base)' }}>
+    <div className="min-h-screen pt-20" style={{ backgroundColor: 'var(--bg-base)' }}>
       <div className="max-w-screen-2xl mx-auto px-4 py-6">
 
         {/* Filter Bar */}
@@ -87,7 +87,7 @@ export const VideosPage: React.FC = () => {
 
         {/* Grid */}
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
             {Array.from({ length: 12 }).map((_, i) => (
               <div key={i} className="animate-pulse">
                 <div className="aspect-video rounded-lg mb-2" style={{ backgroundColor: 'var(--bg-card)' }} />
@@ -102,14 +102,21 @@ export const VideosPage: React.FC = () => {
             ))}
           </div>
         ) : videos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-40" style={{ color: 'var(--text-muted)' }}>
-            <div className="text-6xl mb-4">🎬</div>
+          <div
+            className="flex flex-col items-center justify-center py-52"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            <img
+              src="/logo.png"
+              alt="empty"
+              className="w-[300px] sm:w-[400px] lg:w-[500px] h-auto mb-6 opacity-20 grayscale"
+            />
             <p>비디오가 없어요.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
             {videos.map(video => (
-              <div key={video.id} className="group cursor-pointer">
+              <div key={video.id} className="group cursor-pointer transition-transform hover:-translate-y-1">
                 <div className="relative aspect-video rounded-lg overflow-hidden mb-2" style={{ backgroundColor: 'var(--bg-card)' }}>
                   {video.thumbnail ? (
                     <img src={video.thumbnail} alt={video.videoTitle ?? ''} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
