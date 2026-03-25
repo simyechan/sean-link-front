@@ -17,9 +17,22 @@ const formatViewCount = (count: number) => {
   return count.toString();
 };
 
-const inputStyle: React.CSSProperties = { backgroundColor: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
-const btnPrimary: React.CSSProperties = { backgroundColor: 'var(--accent)', color: '#1a1a1a' };
-const btnSecondary: React.CSSProperties = { backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' };
+const inputStyle: React.CSSProperties = {
+  backgroundColor: 'var(--bg-input)',
+  border: '1px solid var(--border)',
+  color: 'var(--text-primary)'
+};
+
+const btnPrimary: React.CSSProperties = {
+  backgroundColor: 'var(--accent)',
+  color: '#1a1a1a'
+};
+
+const btnSecondary: React.CSSProperties = {
+  backgroundColor: 'var(--bg-card)',
+  border: '1px solid var(--border)',
+  color: 'var(--text-secondary)'
+};
 
 export const VideosPage: React.FC = () => {
   const { isLoggedIn } = useAuth();
@@ -34,14 +47,25 @@ export const VideosPage: React.FC = () => {
   const [addError, setAddError] = useState('');
 
   const { data, loading, error, refetch } = useQuery(GET_ALL_VIDEOS, {
-    variables: { keyword: keyword || undefined, tagName: tagName || undefined, sortBy, sortOrder, page, limit: 20 },
+    variables: {
+      keyword: keyword || undefined,
+      tagName: tagName || undefined,
+      sortBy,
+      sortOrder,
+      page,
+      limit: 20
+    }
   });
 
   const [deleteVideo] = useMutation(DELETE_VIDEO);
   const [addVideo, { loading: addLoading }] = useMutation(ADD_VIDEO);
   const videos: VideoModel[] = data?.getAllVideos ?? [];
 
-  const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setPage(1); refetch(); };
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPage(1);
+    refetch();
+  };
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('정말 삭제하시겠어요?')) return;
@@ -54,30 +78,95 @@ export const VideosPage: React.FC = () => {
     setAddError('');
     try {
       const tags = addTags.split(',').map(t => t.trim()).filter(Boolean);
-      await addVideo({ variables: { url: addUrl, tags: tags.length ? tags : undefined } });
-      setAddUrl(''); setAddTags(''); setShowAddModal(false); refetch();
-    } catch (err: any) { setAddError(err.message || '오류가 발생했어요.'); }
+      await addVideo({
+        variables: {
+          url: addUrl,
+          tags: tags.length ? tags : undefined
+        }
+      });
+      setAddUrl('');
+      setAddTags('');
+      setShowAddModal(false);
+      refetch();
+    } catch (err: any) {
+      setAddError(err.message || '오류가 발생했어요.');
+    }
   };
 
   return (
     <div className="min-h-screen pt-20" style={{ backgroundColor: 'var(--bg-base)' }}>
       <div className="max-w-screen-2xl mx-auto px-4 py-6">
 
-        {/* Filter Bar */}
-        <form onSubmit={handleSearch} className="flex flex-wrap gap-2 mb-6">
-          <input type="text" placeholder="영상 검색..." value={keyword} onChange={e => setKeyword(e.target.value)} style={inputStyle} className="flex-1 min-w-48 px-4 py-2 rounded-lg text-sm placeholder-gray-500 focus:outline-none" />
-          <input type="text" placeholder="태그 필터" value={tagName} onChange={e => setTagName(e.target.value)} style={inputStyle} className="w-36 px-4 py-2 rounded-lg text-sm placeholder-gray-500 focus:outline-none" />
-          <select value={`${sortBy}_${sortOrder}`} onChange={e => { const [by, order] = e.target.value.split('_'); setSortBy(by as VideoSortBy); setSortOrder(order as SortOrder); }} style={inputStyle} className="px-3 py-2 rounded-lg text-sm focus:outline-none">
-            <option value="VIEW_COUNT_DESC">인기순</option>
-            <option value="CREATED_AT_DESC">최신순</option>
-            <option value="TITLE_ASC">제목순</option>
-          </select>
-          <button type="submit" style={btnPrimary} className="px-5 py-2 rounded-lg text-sm font-bold hover:opacity-80 transition-opacity">검색</button>
-          {/* 누구나 추가 가능 */}
-          <button type="button" onClick={() => setShowAddModal(true)} style={btnSecondary} className="px-5 py-2 rounded-lg text-sm font-medium hover:opacity-80 transition-opacity">
-            + 비디오 추가
-          </button>
-        </form>
+        {/* 검색바 */}
+        <div className="mb-6">
+          <div className="flex gap-2 items-center">
+            <input
+              type="text"
+              placeholder="영상 검색..."
+              value={keyword}
+              onChange={e => setKeyword(e.target.value)}
+              style={inputStyle}
+              className="flex-1 px-4 py-2 rounded-lg text-sm placeholder-gray-500 focus:outline-none"
+            />
+
+            <input
+              type="text"
+              placeholder="태그 필터"
+              value={tagName}
+              onChange={e => setTagName(e.target.value)}
+              style={inputStyle}
+              className="w-36 px-4 py-2 rounded-lg text-sm placeholder-gray-500 focus:outline-none"
+            />
+
+            {/* 🔥 커스텀 select */}
+            <div className="relative">
+              <select
+                value={`${sortBy}_${sortOrder}`}
+                onChange={e => {
+                  const [by, order] = e.target.value.split('_');
+                  setSortBy(by as VideoSortBy);
+                  setSortOrder(order as SortOrder);
+                }}
+                style={inputStyle}
+                className="appearance-none px-4 pr-10 py-2 rounded-lg text-sm focus:outline-none cursor-pointer"
+              >
+                <option value="VIEW_COUNT_DESC">인기순</option>
+                <option value="CREATED_AT_DESC">최신순</option>
+                <option value="TITLE_ASC">제목순</option>
+              </select>
+
+              <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                <svg
+                  className="w-3 h-3"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  <path d="M6 8l4 4 4-4" />
+                </svg>
+              </div>
+            </div>
+
+            <button
+              onClick={handleSearch}
+              style={btnPrimary}
+              className="px-5 py-2 rounded-lg text-sm font-bold hover:opacity-80 transition-opacity"
+            >
+              검색
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowAddModal(true)}
+              style={btnSecondary}
+              className="px-4 py-2 rounded-lg text-sm font-medium hover:opacity-80 transition-opacity"
+            >
+              + 추가
+            </button>
+          </div>
+        </div>
 
         {error && (
           <div className="mb-4 px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: '#4a1a1a', border: '1px solid #7a2a2a', color: '#ff8a8a' }}>
@@ -85,7 +174,6 @@ export const VideosPage: React.FC = () => {
           </div>
         )}
 
-        {/* Grid */}
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
             {Array.from({ length: 12 }).map((_, i) => (
@@ -102,15 +190,8 @@ export const VideosPage: React.FC = () => {
             ))}
           </div>
         ) : videos.length === 0 ? (
-          <div
-            className="flex flex-col items-center justify-center py-52"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            <img
-              src="/logo.png"
-              alt="empty"
-              className="w-[300px] sm:w-[400px] lg:w-[500px] h-auto mb-6 opacity-20 grayscale"
-            />
+          <div className="flex flex-col items-center justify-center py-52">
+            <img src="/logo.png" alt="empty" className="w-[300px] sm:w-[400px] lg:w-[500px] h-auto mb-6 opacity-20 grayscale" />
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
@@ -159,11 +240,8 @@ export const VideosPage: React.FC = () => {
                         {video.tags.map(tag => <span key={tag.id} className="text-xs font-medium" style={{ color: 'var(--accent)' }}>#{tag.name}</span>)}
                       </div>
                     )}
-                    {/* 삭제는 어드민만 */}
                     {isLoggedIn && (
-                      <button onClick={() => handleDelete(video.id)} className="text-xs mt-0.5 hover:opacity-70 transition-opacity" style={{ color: '#ff8a8a' }}>
-                        삭제
-                      </button>
+                      <button onClick={() => handleDelete(video.id)} className="text-xs mt-0.5 hover:opacity-70 transition-opacity" style={{ color: '#ff8a8a' }}>삭제</button>
                     )}
                   </div>
                 </div>
@@ -172,7 +250,6 @@ export const VideosPage: React.FC = () => {
           </div>
         )}
 
-        {/* Pagination */}
         <div className="flex justify-center gap-2 mt-12">
           <button disabled={page === 1} onClick={() => setPage(p => p - 1)} style={btnSecondary} className="px-5 py-2 rounded-lg text-sm disabled:opacity-40 hover:opacity-80 transition-opacity">이전</button>
           <span className="px-4 py-2 text-sm" style={{ color: 'var(--text-muted)' }}>{page} 페이지</span>
@@ -180,7 +257,6 @@ export const VideosPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Add Modal - 누구나 사용 가능 */}
       {showAddModal && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
           <div className="rounded-2xl p-6 w-full max-w-md" style={{ backgroundColor: 'var(--bg-nav)', border: '1px solid var(--border)' }}>

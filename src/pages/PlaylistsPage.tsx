@@ -60,15 +60,8 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
               <span className="text-sm w-6 text-center flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{idx + 1}</span>
               {video.thumbnail
                 ? <img src={video.thumbnail} alt="" className="w-32 aspect-video object-cover rounded-lg flex-shrink-0" />
-                : <div
-                    className="w-32 aspect-video rounded-lg flex-shrink-0 flex items-center justify-center"
-                    style={{ backgroundColor: 'var(--bg-card)' }}
-                  >
-                    <img
-                      src="/logo.png"
-                      alt="영상 없음"
-                      className="w-12 h-12 object-contain opacity-70"
-                    />
+                : <div className="w-32 aspect-video rounded-lg flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: 'var(--bg-card)' }}>
+                    <img src="/logo.png" alt="" className="w-12 h-12 object-contain opacity-70" />
                   </div>
               }
               <div className="flex-1 min-w-0">
@@ -77,7 +70,6 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
                 </a>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{video.channelName}</p>
               </div>
-              {/* 제거는 어드민만 */}
               {isLoggedIn && (
                 <button onClick={() => handleRemove(video.id)} className="text-xs flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: '#ff8a8a' }}>제거</button>
               )}
@@ -132,17 +124,73 @@ export const PlaylistsPage: React.FC = () => {
   return (
     <div className="min-h-screen pt-14" style={{ backgroundColor: 'var(--bg-base)' }}>
       <div className="max-w-screen-2xl mx-auto px-4 pt-12 pb-6">
-        <form onSubmit={handleSearch} className="flex flex-wrap gap-2 mb-6">
-          <input type="text" placeholder="플레이리스트 이름 검색..." value={keyword} onChange={e => setKeyword(e.target.value)} style={inputStyle} className="flex-1 min-w-48 px-4 py-2 rounded-lg text-sm placeholder-gray-500 focus:outline-none" />
-          <input type="text" placeholder="태그 필터" value={tagName} onChange={e => setTagName(e.target.value)} style={inputStyle} className="w-36 px-4 py-2 rounded-lg text-sm placeholder-gray-500 focus:outline-none" />
-          <select value={`${sortBy}_${sortOrder}`} onChange={e => { const [by, order] = e.target.value.split('_'); setSortBy(by as PlaylistSortBy); setSortOrder(order as SortOrder); }} style={inputStyle} className="px-3 py-2 rounded-lg text-sm focus:outline-none">
-            <option value="VIEW_COUNT_DESC">인기순</option>
-            <option value="CREATED_AT_DESC">최신순</option>
-            <option value="NAME_ASC">이름순</option>
-          </select>
-          <button type="submit" style={btnPrimary} className="px-5 py-2 rounded-lg text-sm font-bold hover:opacity-80 transition-opacity">검색</button>
-          {/* 누구나 생성 가능 */}
-          <button type="button" onClick={() => setShowCreateModal(true)} style={btnSecondary} className="px-5 py-2 rounded-lg text-sm font-medium hover:opacity-80 transition-opacity">+ 생성</button>
+
+        {/* 검색바 */}
+        <form onSubmit={handleSearch} className="mb-6">
+          <div className="flex gap-2 items-center">
+            <input
+              type="text"
+              placeholder="플레이리스트 이름 검색..."
+              value={keyword}
+              onChange={e => setKeyword(e.target.value)}
+              style={inputStyle}
+              className="flex-1 px-4 py-2 rounded-lg text-sm"
+            />
+
+            <input
+              type="text"
+              placeholder="태그 필터"
+              value={tagName}
+              onChange={e => setTagName(e.target.value)}
+              style={inputStyle}
+              className="w-36 px-4 py-2 rounded-lg text-sm"
+            />
+
+            {/* 🔥 정렬 커스텀 select */}
+            <div className="relative">
+              <select
+                value={`${sortBy}_${sortOrder}`}
+                onChange={e => {
+                  const [by, order] = e.target.value.split('_');
+                  setSortBy(by as PlaylistSortBy);
+                  setSortOrder(order as SortOrder);
+                }}
+                style={inputStyle}
+                className="appearance-none px-4 pr-10 py-2 rounded-lg text-sm focus:outline-none cursor-pointer"
+              >
+                <option value="VIEW_COUNT_DESC">인기순</option>
+                <option value="CREATED_AT_DESC">최신순</option>
+                <option value="NAME_ASC">이름순</option>
+              </select>
+
+              {/* 🔥 커스텀 화살표 */}
+              <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                <svg
+                  className="w-3 h-3"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  <path d="M6 8l4 4 4-4" />
+                </svg>
+              </div>
+            </div>
+
+            <button type="submit" style={btnPrimary} className="px-5 py-2 rounded-lg text-sm font-bold">
+              검색
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(true)}
+              style={btnSecondary}
+              className="px-5 py-2 rounded-lg text-sm"
+            >
+              + 생성
+            </button>
+          </div>
         </form>
 
         {loading ? (
@@ -157,11 +205,7 @@ export const PlaylistsPage: React.FC = () => {
           </div>
         ) : playlists.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-40" style={{ color: 'var(--text-muted)' }}>
-            <img
-              src="/logo.png"
-              alt="빈 플레이리스트"
-              className="w-[300px] sm:w-[400px] lg:w-[500px] h-auto mb-4 opacity-20 grayscale"
-            />
+            <img src="/logo.png" alt="빈 플레이리스트" className="w-[300px] sm:w-[400px] lg:w-[500px] h-auto mb-4 opacity-20 grayscale" />
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -178,11 +222,7 @@ export const PlaylistsPage: React.FC = () => {
                     </div>
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <img
-                        src="/logo.png"
-                        alt="빈 플레이리스트"
-                        className="w-16 h-16 object-contain opacity-70"
-                      />
+                      <img src="/logo.png" alt="" className="w-16 h-16 object-contain opacity-70" />
                     </div>
                   )}
                   <div className="absolute bottom-1 right-1 text-white text-xs px-1.5 py-0.5 rounded flex items-center gap-1" style={{ backgroundColor: 'rgba(0,0,0,0.75)' }}>
@@ -197,7 +237,6 @@ export const PlaylistsPage: React.FC = () => {
                     {playlist.tags.map(tag => <span key={tag.id} className="text-xs font-medium" style={{ color: 'var(--accent)' }}>#{tag.name}</span>)}
                   </div>
                 )}
-                {/* 삭제는 어드민만 */}
                 {isLoggedIn && (
                   <button onClick={e => { e.stopPropagation(); handleDelete(playlist.id); }} className="text-xs mt-0.5 hover:opacity-70 transition-opacity" style={{ color: '#ff8a8a' }}>삭제</button>
                 )}
@@ -213,7 +252,6 @@ export const PlaylistsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Create Modal - 누구나 사용 가능 */}
       {showCreateModal && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
           <div className="rounded-2xl p-6 w-full max-w-md" style={{ backgroundColor: 'var(--bg-nav)', border: '1px solid var(--border)' }}>

@@ -17,40 +17,27 @@ export const TagsPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [addError, setAddError] = useState('');
 
-  // ✅ debounce
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedKeyword(keyword);
       setPage(1);
     }, 300);
-
     return () => clearTimeout(timer);
   }, [keyword]);
 
   const { data, loading, refetch } = useQuery(GET_ALL_TAGS, {
-    variables: {
-      keyword: debouncedKeyword || undefined,
-      sortBy,
-      sortOrder,
-      page,
-      limit: 50,
-    },
+    variables: { keyword: debouncedKeyword || undefined, sortBy, sortOrder, page, limit: 50 },
   });
 
   const [addTag] = useMutation(ADD_TAG);
   const [deleteTag] = useMutation(DELETE_TAG);
-
   const tags: TagModel[] = data?.getAllTags ?? [];
 
-  // debounce 값 바뀌면 자동 검색
-  useEffect(() => {
-    refetch();
-  }, [debouncedKeyword, sortBy, sortOrder, page]);
+  useEffect(() => { refetch(); }, [debouncedKeyword, sortBy, sortOrder, page]);
 
   const handleAdd = async () => {
     if (!keyword.trim()) return;
     setAddError('');
-
     try {
       await addTag({ variables: { tagInput: { name: keyword.trim() } } });
       setKeyword('');
@@ -69,26 +56,59 @@ export const TagsPage: React.FC = () => {
   const isExactMatch = tags.some(t => t.name === keyword.trim());
 
   return (
-    <div className="min-h-screen pt-16" style={{ backgroundColor: 'var(--bg-base)' }}>
-      <div className="max-w-screen-md mx-auto px-4 pt-10 pb-6">
+    <div className="min-h-screen pt-14" style={{ backgroundColor: 'var(--bg-base)' }}>
+      <div className="max-w-screen-2xl mx-auto px-4 pt-12 pb-6">
 
-        {/* 🔥 검색 + 생성 통합 */}
-        <div className="mb-6">
-          <div className="flex gap-2">
+        {/* 검색 + 추가 - 플레이리스트와 동일한 레이아웃 */}
+        <div className="mb-4">
+          <div className="flex gap-2 items-center">
             <input
               type="text"
               value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
+              onChange={e => setKeyword(e.target.value)}
               placeholder="태그 검색 또는 추가..."
               style={inputStyle}
               className="flex-1 px-4 py-2 rounded-lg text-sm placeholder-gray-500 focus:outline-none"
             />
 
+            {/* 🔥 정렬을 여기로 이동 */}
+            <div className="relative">
+              <select
+                value={`${sortBy}_${sortOrder}`}
+                onChange={e => {
+                  const [by, order] = e.target.value.split('_');
+                  setSortBy(by as TagSortBy);
+                  setSortOrder(order as SortOrder);
+                }}
+                style={inputStyle}
+                className="appearance-none px-4 pr-10 py-2 rounded-lg text-sm focus:outline-none cursor-pointer"
+              >
+                <option value="NAME_ASC">이름↑</option>
+                <option value="NAME_DESC">이름↓</option>
+                <option value="CREATED_AT_DESC">최신</option>
+                <option value="CREATED_AT_ASC">오래된</option>
+              </select>
+
+              {/* 🔥 화살표 */}
+              <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                <svg
+                  className="w-3 h-3"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  <path d="M6 8l4 4 4-4" />
+                </svg>
+              </div>
+            </div>
+
             {keyword.trim() && !isExactMatch && (
               <button
                 onClick={handleAdd}
                 style={btnPrimary}
-                className="px-4 py-2 rounded-lg text-sm font-bold hover:opacity-80"
+                className="px-4 py-2 rounded-lg text-sm font-bold hover:opacity-80 transition-opacity"
               >
                 + 생성
               </button>
@@ -96,29 +116,10 @@ export const TagsPage: React.FC = () => {
           </div>
 
           {addError && (
-            <p className="text-sm mt-2" style={{ color: '#ff8a8a' }}>
+            <p className="text-sm mt-1" style={{ color: '#ff8a8a' }}>
               {addError}
             </p>
           )}
-        </div>
-
-        {/* 정렬 */}
-        <div className="flex justify-end mb-4">
-          <select
-            value={`${sortBy}_${sortOrder}`}
-            onChange={(e) => {
-              const [by, order] = e.target.value.split('_');
-              setSortBy(by as TagSortBy);
-              setSortOrder(order as SortOrder);
-            }}
-            style={inputStyle}
-            className="px-3 py-2 rounded-lg text-sm focus:outline-none"
-          >
-            <option value="NAME_ASC">이름 오름차순</option>
-            <option value="NAME_DESC">이름 내림차순</option>
-            <option value="CREATED_AT_DESC">최신순</option>
-            <option value="CREATED_AT_ASC">오래된순</option>
-          </select>
         </div>
 
         {/* 리스트 */}
@@ -129,11 +130,11 @@ export const TagsPage: React.FC = () => {
             ))}
           </div>
         ) : tags.length === 0 ? (
-          <div className="flex flex-col items-center py-24" style={{ color: 'var(--text-muted)' }}>
+          <div className="flex flex-col items-center justify-center py-40">
             <img
               src="/logo.png"
               alt="태그 없음"
-              className="w-[300px] opacity-20 grayscale"
+              className="w-[300px] sm:w-[400px] lg:w-[500px] h-auto opacity-20 grayscale"
             />
           </div>
         ) : (
@@ -143,18 +144,17 @@ export const TagsPage: React.FC = () => {
                 key={tag.id}
                 className="flex items-center justify-between px-4 py-3 rounded-xl transition-colors group"
                 style={{ backgroundColor: 'var(--bg-card)' }}
+                onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--bg-input)')}
+                onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'var(--bg-card)')}
               >
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>#</span>
-                  <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {tag.name}
-                  </span>
+                  <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{tag.name}</span>
                 </div>
-
                 {isLoggedIn && (
                   <button
                     onClick={() => handleDelete(tag.id, tag.name)}
-                    className="text-xs opacity-0 group-hover:opacity-100"
+                    className="text-xs opacity-0 group-hover:opacity-100 hover:opacity-70 transition-all"
                     style={{ color: '#ff8a8a' }}
                   >
                     삭제
@@ -164,6 +164,13 @@ export const TagsPage: React.FC = () => {
             ))}
           </div>
         )}
+
+        {/* 페이지네이션 */}
+        <div className="flex justify-center gap-2 mt-8">
+          <button disabled={page === 1} onClick={() => setPage(p => p - 1)} style={btnSecondary} className="px-5 py-2 rounded-lg text-sm disabled:opacity-40 hover:opacity-80 transition-opacity">이전</button>
+          <span className="px-4 py-2 text-sm" style={{ color: 'var(--text-muted)' }}>{page} 페이지</span>
+          <button disabled={tags.length < 50} onClick={() => setPage(p => p + 1)} style={btnSecondary} className="px-5 py-2 rounded-lg text-sm disabled:opacity-40 hover:opacity-80 transition-opacity">다음</button>
+        </div>
       </div>
     </div>
   );
