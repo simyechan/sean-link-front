@@ -76,7 +76,9 @@ export const TagsPage: React.FC = () => {
               <select
                 value={`${sortBy}_${sortOrder}`}
                 onChange={e => {
-                  const [by, order] = e.target.value.split('_');
+                  const val = e.target.value;
+                  const order = val.endsWith('_DESC') ? 'DESC' : 'ASC';
+                  const by = val.replace(/_DESC$|_ASC$/, '');
                   setSortBy(by as TagSortBy);
                   setSortOrder(order as SortOrder);
                 }}
@@ -85,8 +87,8 @@ export const TagsPage: React.FC = () => {
               >
                 <option value="NAME_ASC">이름↑</option>
                 <option value="NAME_DESC">이름↓</option>
-                <option value="CREATED_AT_DESC">최신</option>
-                <option value="CREATED_AT_ASC">오래된</option>
+                <option value="CREATED_AT_DESC">최신순</option>
+                <option value="CREATED_AT_ASC">등록순</option>
               </select>
 
               {/* 🔥 화살표 */}

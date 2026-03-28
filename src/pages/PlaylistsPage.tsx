@@ -76,8 +76,8 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
             </div>
           ))}
           {playlist.videos.length === 0 && (
-            <div className="flex flex-col items-center py-20" style={{ color: 'var(--text-muted)' }}>
-              <div className="text-5xl mb-3">📋</div><p>플레이리스트가 비어있어요.</p>
+            <div className="flex flex-col items-center justify-center py-40">
+              <img src="/logo.png" alt="빈 플레이리스트" className="w-[300px] sm:w-[400px] lg:w-[500px] h-auto mb-4 opacity-20 grayscale" />
             </div>
           )}
         </div>
@@ -127,69 +127,30 @@ export const PlaylistsPage: React.FC = () => {
 
         {/* 검색바 */}
         <form onSubmit={handleSearch} className="mb-6">
-          <div className="flex gap-2 items-center">
-            <input
-              type="text"
-              placeholder="플레이리스트 이름 검색..."
-              value={keyword}
-              onChange={e => setKeyword(e.target.value)}
+          <div className="flex gap-2 mb-2">
+            <input type="text" placeholder="플레이리스트 이름 검색..." value={keyword} onChange={e => setKeyword(e.target.value)} style={inputStyle} className="flex-1 px-4 py-2 rounded-lg text-sm placeholder-gray-500 focus:outline-none" />
+            <input type="text" placeholder="태그 필터" value={tagName} onChange={e => setTagName(e.target.value)} style={inputStyle} className="w-36 px-4 py-2 rounded-lg text-sm placeholder-gray-500 focus:outline-none" />
+            <button type="submit" style={btnPrimary} className="px-5 py-2 rounded-lg text-sm font-bold hover:opacity-80 transition-opacity">검색</button>
+            <button type="button" onClick={() => setShowCreateModal(true)} style={btnSecondary} className="px-5 py-2 rounded-lg text-sm font-medium hover:opacity-80 transition-opacity">+ 생성</button>
+          </div>
+          {/* 정렬 - 검색바 아래 오른쪽 */}
+          <div className="flex justify-end">
+            <select
+              value={`${sortBy}_${sortOrder}`}
+              onChange={e => {
+                const val = e.target.value;
+                const order = val.endsWith('_DESC') ? 'DESC' : 'ASC';
+                const by = val.replace(/_DESC$|_ASC$/, '');
+                setSortBy(by as PlaylistSortBy);
+                setSortOrder(order as SortOrder);
+              }}
               style={inputStyle}
-              className="flex-1 px-4 py-2 rounded-lg text-sm"
-            />
-
-            <input
-              type="text"
-              placeholder="태그 필터"
-              value={tagName}
-              onChange={e => setTagName(e.target.value)}
-              style={inputStyle}
-              className="w-36 px-4 py-2 rounded-lg text-sm"
-            />
-
-            {/* 🔥 정렬 커스텀 select */}
-            <div className="relative">
-              <select
-                value={`${sortBy}_${sortOrder}`}
-                onChange={e => {
-                  const [by, order] = e.target.value.split('_');
-                  setSortBy(by as PlaylistSortBy);
-                  setSortOrder(order as SortOrder);
-                }}
-                style={inputStyle}
-                className="appearance-none px-4 pr-10 py-2 rounded-lg text-sm focus:outline-none cursor-pointer"
-              >
-                <option value="VIEW_COUNT_DESC">인기순</option>
-                <option value="CREATED_AT_DESC">최신순</option>
-                <option value="NAME_ASC">이름순</option>
-              </select>
-
-              {/* 🔥 커스텀 화살표 */}
-              <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                <svg
-                  className="w-3 h-3"
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  style={{ color: 'var(--text-muted)' }}
-                >
-                  <path d="M6 8l4 4 4-4" />
-                </svg>
-              </div>
-            </div>
-
-            <button type="submit" style={btnPrimary} className="px-5 py-2 rounded-lg text-sm font-bold">
-              검색
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowCreateModal(true)}
-              style={btnSecondary}
-              className="px-5 py-2 rounded-lg text-sm"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none"
             >
-              + 생성
-            </button>
+              <option value="VIEW_COUNT_DESC">인기순</option>
+              <option value="CREATED_AT_DESC">최신순</option>
+              <option value="NAME_ASC">이름순</option>
+            </select>
           </div>
         </form>
 

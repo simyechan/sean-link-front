@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation } from '@apollo/client';
-import { GET_ALL_VIDEOS, DELETE_VIDEO, ADD_VIDEO } from '../lib/queries';
+import { GET_ALL_VIDEOS, GET_ALL_TAGS, DELETE_VIDEO, ADD_VIDEO } from '../lib/queries';
 import { VideoModel, VideoSortBy, SortOrder } from '../types/models';
 import { useAuth } from '../context/AuthContext';
 
@@ -17,23 +17,98 @@ const formatViewCount = (count: number) => {
   return count.toString();
 };
 
-const inputStyle: React.CSSProperties = {
-  backgroundColor: 'var(--bg-input)',
-  border: '1px solid var(--border)',
-  color: 'var(--text-primary)'
+const inputStyle: React.CSSProperties = { backgroundColor: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
+const btnPrimary: React.CSSProperties = { backgroundColor: 'var(--accent)', color: '#1a1a1a' };
+const btnSecondary: React.CSSProperties = { backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' };
+
+
+// ✅ TagInput (multiple 지원 추가)
+const TagInput: React.FC<{
+  value: string;
+  onChange: (val: string) => void;
+  multiple?: boolean;
+}> = ({ value, onChange, multiple = true }) => {
+  const [showDropdown, setShowDropdown] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const parts = multiple ? value.split(',') : [value];
+  const currentInput = parts[parts.length - 1].trim();
+
+  const { data: tagData } = useQuery(GET_ALL_TAGS, {
+    variables: { keyword: currentInput || undefined, limit: 10, page: 1 },
+    skip: !currentInput,
+  });
+
+  const suggestions: string[] = (tagData?.getAllTags ?? []).map((t: any) => t.name);
+
+  const alreadySelected = value.split(',').map(t => t.trim()).filter(Boolean);
+  const filtered = suggestions.filter(s => !alreadySelected.includes(s));
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onChange(e.target.value);
+    setShowDropdown(true);
+  };
+
+  const handleSelect = (tag: string) => {
+    if (multiple) {
+      const prevParts = value.split(',');
+      prevParts[prevParts.length - 1] = ` ${tag}`;
+      onChange(prevParts.join(',') + ', ');
+    } else {
+      onChange(tag);
+    }
+    setShowDropdown(false);
+  };
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <input
+        type="text"
+        value={value}
+        onChange={handleInputChange}
+        onFocus={() => currentInput && setShowDropdown(true)}
+        placeholder="태그 입력..."
+        style={inputStyle}
+        className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none"
+      />
+
+      {showDropdown && filtered.length > 0 && (
+        <div
+          className="absolute left-0 right-0 top-full mt-1 rounded-xl overflow-hidden z-50 shadow-lg"
+          style={{ backgroundColor: 'var(--bg-nav)', border: '1px solid var(--border)' }}
+        >
+          {filtered.map(tag => (
+            <button
+              key={tag}
+              type="button"
+              onMouseDown={e => {
+                e.preventDefault();
+                handleSelect(tag);
+              }}
+              className="w-full px-3 py-2 text-sm text-left hover:opacity-80"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              <span style={{ color: 'var(--accent)' }}>#</span> {tag}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 };
 
-const btnPrimary: React.CSSProperties = {
-  backgroundColor: 'var(--accent)',
-  color: '#1a1a1a'
-};
 
-const btnSecondary: React.CSSProperties = {
-  backgroundColor: 'var(--bg-card)',
-  border: '1px solid var(--border)',
-  color: 'var(--text-secondary)'
-};
-
+// ─── 메인 페이지 ──────────────────────────────────────────────
 export const VideosPage: React.FC = () => {
   const { isLoggedIn } = useAuth();
   const [keyword, setKeyword] = useState('');
@@ -41,31 +116,21 @@ export const VideosPage: React.FC = () => {
   const [sortBy, setSortBy] = useState<VideoSortBy>('VIEW_COUNT');
   const [sortOrder, setSortOrder] = useState<SortOrder>('DESC');
   const [page, setPage] = useState(1);
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [addUrl, setAddUrl] = useState('');
   const [addTags, setAddTags] = useState('');
   const [addError, setAddError] = useState('');
 
   const { data, loading, error, refetch } = useQuery(GET_ALL_VIDEOS, {
-    variables: {
-      keyword: keyword || undefined,
-      tagName: tagName || undefined,
-      sortBy,
-      sortOrder,
-      page,
-      limit: 20
-    }
+    variables: { keyword: keyword || undefined, tagName: tagName || undefined, sortBy, sortOrder, page, limit: 20 },
   });
 
   const [deleteVideo] = useMutation(DELETE_VIDEO);
   const [addVideo, { loading: addLoading }] = useMutation(ADD_VIDEO);
   const videos: VideoModel[] = data?.getAllVideos ?? [];
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(1);
-    refetch();
-  };
+  const handleSearch = (e?: React.FormEvent) => { e?.preventDefault(); setPage(1); refetch(); };
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('정말 삭제하시겠어요?')) return;
@@ -78,16 +143,8 @@ export const VideosPage: React.FC = () => {
     setAddError('');
     try {
       const tags = addTags.split(',').map(t => t.trim()).filter(Boolean);
-      await addVideo({
-        variables: {
-          url: addUrl,
-          tags: tags.length ? tags : undefined
-        }
-      });
-      setAddUrl('');
-      setAddTags('');
-      setShowAddModal(false);
-      refetch();
+      await addVideo({ variables: { url: addUrl, tags: tags.length ? tags : undefined } });
+      setAddUrl(''); setAddTags(''); setShowAddModal(false); refetch();
     } catch (err: any) {
       setAddError(err.message || '오류가 발생했어요.');
     }
@@ -97,83 +154,66 @@ export const VideosPage: React.FC = () => {
     <div className="min-h-screen pt-20" style={{ backgroundColor: 'var(--bg-base)' }}>
       <div className="max-w-screen-2xl mx-auto px-4 py-6">
 
-        {/* 검색바 */}
+        {/* 🔥 검색바 */}
         <div className="mb-6">
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 mb-2">
             <input
               type="text"
               placeholder="영상 검색..."
               value={keyword}
               onChange={e => setKeyword(e.target.value)}
               style={inputStyle}
-              className="flex-1 px-4 py-2 rounded-lg text-sm placeholder-gray-500 focus:outline-none"
+              className="flex-1 px-4 py-2 rounded-lg text-sm"
             />
 
-            <input
-              type="text"
-              placeholder="태그 필터"
-              value={tagName}
-              onChange={e => setTagName(e.target.value)}
-              style={inputStyle}
-              className="w-36 px-4 py-2 rounded-lg text-sm placeholder-gray-500 focus:outline-none"
-            />
-
-            {/* 🔥 커스텀 select */}
-            <div className="relative">
-              <select
-                value={`${sortBy}_${sortOrder}`}
-                onChange={e => {
-                  const [by, order] = e.target.value.split('_');
-                  setSortBy(by as VideoSortBy);
-                  setSortOrder(order as SortOrder);
+            {/* ✅ 여기 바뀜 */}
+            <div className="w-36">
+              <TagInput
+                value={tagName}
+                onChange={(val) => {
+                  setTagName(val);
+                  setPage(1);
                 }}
-                style={inputStyle}
-                className="appearance-none px-4 pr-10 py-2 rounded-lg text-sm focus:outline-none cursor-pointer"
-              >
-                <option value="VIEW_COUNT_DESC">인기순</option>
-                <option value="CREATED_AT_DESC">최신순</option>
-                <option value="TITLE_ASC">제목순</option>
-              </select>
-
-              <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                <svg
-                  className="w-3 h-3"
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  style={{ color: 'var(--text-muted)' }}
-                >
-                  <path d="M6 8l4 4 4-4" />
-                </svg>
-              </div>
+                multiple={false}
+              />
             </div>
 
-            <button
-              onClick={handleSearch}
-              style={btnPrimary}
-              className="px-5 py-2 rounded-lg text-sm font-bold hover:opacity-80 transition-opacity"
-            >
+            <button onClick={() => handleSearch()} style={btnPrimary} className="px-5 py-2 rounded-lg text-sm font-bold">
               검색
             </button>
 
-            <button
-              type="button"
-              onClick={() => setShowAddModal(true)}
-              style={btnSecondary}
-              className="px-4 py-2 rounded-lg text-sm font-medium hover:opacity-80 transition-opacity"
-            >
+            <button type="button" onClick={() => setShowAddModal(true)} style={btnSecondary} className="px-4 py-2 rounded-lg text-sm">
               + 추가
             </button>
           </div>
+
+          <div className="flex justify-end">
+            <select
+              value={`${sortBy}_${sortOrder}`}
+              onChange={e => {
+                const val = e.target.value;
+                const order = val.endsWith('_DESC') ? 'DESC' : 'ASC';
+                const by = val.replace(/_DESC$|_ASC$/, '');
+                setSortBy(by as VideoSortBy);
+                setSortOrder(order as SortOrder);
+              }}
+              style={inputStyle}
+              className="px-3 py-2 rounded-lg text-sm"
+            >
+              <option value="VIEW_COUNT_DESC">인기순</option>
+              <option value="CREATED_AT_DESC">최신순</option>
+              <option value="TITLE_ASC">제목순</option>
+            </select>
+          </div>
         </div>
 
-        {error && (
+       {error && (
           <div className="mb-4 px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: '#4a1a1a', border: '1px solid #7a2a2a', color: '#ff8a8a' }}>
             에러: {error.message}
           </div>
         )}
 
+        {/* Grid */}
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
             {Array.from({ length: 12 }).map((_, i) => (
@@ -257,6 +297,7 @@ export const VideosPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Add Modal */}
       {showAddModal && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
           <div className="rounded-2xl p-6 w-full max-w-md" style={{ backgroundColor: 'var(--bg-nav)', border: '1px solid var(--border)' }}>
@@ -264,15 +305,37 @@ export const VideosPage: React.FC = () => {
             <form onSubmit={handleAdd} className="space-y-4">
               <div>
                 <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>영상 URL *</label>
-                <input type="text" value={addUrl} onChange={e => setAddUrl(e.target.value)} required placeholder="https://..." style={inputStyle} className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none" />
+                <input
+                  type="text"
+                  value={addUrl}
+                  onChange={e => setAddUrl(e.target.value)}
+                  required
+                  placeholder="https://chzzk.naver.com/clips/..."
+                  style={inputStyle}
+                  className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none"
+                />
               </div>
               <div>
-                <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>태그 (쉼표로 구분)</label>
-                <input type="text" value={addTags} onChange={e => setAddTags(e.target.value)} placeholder="태그1, 태그2..." style={inputStyle} className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none" />
+                <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
+                  태그
+                  <span className="ml-1 text-xs" style={{ color: 'var(--text-muted)' }}>(쉼표로 구분, 입력하면 기존 태그 추천)</span>
+                </label>
+                {/* 태그 자동완성 */}
+                <TagInput value={addTags} onChange={setAddTags} />
+                {/* 선택된 태그 미리보기 */}
+                {addTags.split(',').map(t => t.trim()).filter(Boolean).length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {addTags.split(',').map(t => t.trim()).filter(Boolean).map(tag => (
+                      <span key={tag} className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'var(--bg-card)', color: 'var(--accent)' }}>
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               {addError && <p className="text-sm" style={{ color: '#ff8a8a' }}>{addError}</p>}
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 text-sm hover:opacity-70 transition-opacity" style={{ color: 'var(--text-muted)' }}>취소</button>
+                <button type="button" onClick={() => { setShowAddModal(false); setAddUrl(''); setAddTags(''); setAddError(''); }} className="px-4 py-2 text-sm hover:opacity-70 transition-opacity" style={{ color: 'var(--text-muted)' }}>취소</button>
                 <button type="submit" disabled={addLoading} style={btnPrimary} className="px-5 py-2 rounded-lg text-sm font-bold disabled:opacity-50 hover:opacity-80 transition-opacity">
                   {addLoading ? '추가 중...' : '추가'}
                 </button>
