@@ -3,6 +3,7 @@ import { useQuery, useMutation } from '@apollo/client';
 import { GET_ALL_PLAYLISTS, GET_PLAYLIST_BY_ID, CREATE_PLAYLIST, DELETE_PLAYLIST, REMOVE_VIDEO_FROM_PLAYLIST } from '../lib/queries';
 import { PlaylistModel, PlaylistSortBy, SortOrder } from '../types/models';
 import { useAuth } from '../context/AuthContext';
+import { ADD_VIDEO_TO_PLAYLIST } from '../lib/queries';
 
 const formatViewCount = (count: number) => {
   if (count >= 10000) return `${(count / 10000).toFixed(1)}만`;
@@ -18,7 +19,27 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
   const { isLoggedIn } = useAuth();
   const { data, loading, refetch } = useQuery(GET_PLAYLIST_BY_ID, { variables: { id } });
   const [removeVideo] = useMutation(REMOVE_VIDEO_FROM_PLAYLIST);
+  const [addVideo] = useMutation(ADD_VIDEO_TO_PLAYLIST);
+  const [videoIdInput, setVideoIdInput] = useState('');
   const playlist: PlaylistModel | undefined = data?.getPlaylistById;
+
+  const handleAddVideo = async () => {
+    if (!videoIdInput.trim()) return;
+
+    try {
+      await addVideo({
+        variables: {
+          playlistId: id,
+          videoId: videoIdInput.trim(),
+        },
+      });
+
+      setVideoIdInput('');
+      refetch();
+    } catch (e) {
+      alert('추가 실패');
+    }
+  };
 
   const handleRemove = async (videoId: string) => {
     if (!window.confirm('이 영상을 플레이리스트에서 제거하시겠어요?')) return;
@@ -50,6 +71,25 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
             </div>
           )}
         </div>
+        {isLoggedIn && (
+          <div className="flex gap-2 mb-4">
+            <input
+              type="text"
+              value={videoIdInput}
+              onChange={e => setVideoIdInput(e.target.value)}
+              placeholder="추가할 영상 ID"
+              style={inputStyle}
+              className="flex-1 px-3 py-2 rounded-lg text-sm"
+            />
+            <button
+              onClick={handleAddVideo}
+              style={btnPrimary}
+              className="px-4 py-2 rounded-lg text-sm"
+            >
+              추가
+            </button>
+          </div>
+        )}
         <div className="space-y-1.5">
           {playlist.videos.map((video, idx) => (
             <div key={video.id} className="flex items-center gap-3 p-3 rounded-xl transition-colors group"
@@ -97,6 +137,8 @@ export const PlaylistsPage: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newName, setNewName] = useState('');
   const [createError, setCreateError] = useState('');
+  const [newTags, setNewTags] = useState('');
+  const [newVideoIds, setNewVideoIds] = useState('');
 
   const { data, loading, refetch } = useQuery(GET_ALL_PLAYLISTS, {
     variables: { keyword: keyword || undefined, tagName: tagName || undefined, sortBy, sortOrder, page, limit: 20 },
@@ -109,8 +151,24 @@ export const PlaylistsPage: React.FC = () => {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault(); setCreateError('');
     try {
-      await createPlaylist({ variables: { data: { name: newName } } });
-      setNewName(''); setShowCreateModal(false); refetch();
+      await createPlaylist({
+        variables: {
+          data: {
+            name: newName,
+            tags: newTags ? newTags.split(',').map(t => t.trim()) : [],
+            videoIds: newVideoIds
+              ? newVideoIds.split(',').map(v => v.trim())
+              : [],
+          },
+        },
+      });
+      setNewName('');
+      setNewTags('');
+      setNewVideoIds('');
+      
+      setShowCreateModal(false);
+      refetch();
+
     } catch (err: any) { setCreateError(err.message || '오류가 발생했어요.'); }
   };
   const handleDelete = async (id: string) => {
@@ -221,6 +279,33 @@ export const PlaylistsPage: React.FC = () => {
               <div>
                 <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>이름 *</label>
                 <input type="text" value={newName} onChange={e => setNewName(e.target.value)} required placeholder="플레이리스트 이름" style={inputStyle} className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
+                  태그 (콤마로 구분)
+                </label>
+                <input
+                  type="text"
+                  value={newTags}
+                  onChange={e => setNewTags(e.target.value)}
+                  placeholder="태그 입력..."
+                  style={inputStyle}
+                  className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
+                  영상 ID (콤마로 구분)
+                </label>
+                <input
+                  type="text"
+                  value={newVideoIds}
+                  onChange={e => setNewVideoIds(e.target.value)}
+                  placeholder="videoId1, videoId2"
+                  style={inputStyle}
+                  className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none"
+                />
               </div>
               {createError && <p className="text-sm" style={{ color: '#ff8a8a' }}>{createError}</p>}
               <div className="flex justify-end gap-2 pt-2">
