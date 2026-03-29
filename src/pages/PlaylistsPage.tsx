@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation } from '@apollo/client';
-import { GET_ALL_PLAYLISTS, GET_PLAYLIST_BY_ID, CREATE_PLAYLIST, DELETE_PLAYLIST, REMOVE_VIDEO_FROM_PLAYLIST } from '../lib/queries';
-import { PlaylistModel, PlaylistSortBy, SortOrder } from '../types/models';
+import {
+  GET_ALL_PLAYLISTS, GET_PLAYLIST_BY_ID, GET_ALL_TAGS, GET_ALL_VIDEOS,
+  CREATE_PLAYLIST, DELETE_PLAYLIST, REMOVE_VIDEO_FROM_PLAYLIST, ADD_VIDEO_TO_PLAYLIST,
+} from '../lib/queries';
+import { PlaylistModel, VideoModel, PlaylistSortBy, SortOrder } from '../types/models';
 import { useAuth } from '../context/AuthContext';
-import { ADD_VIDEO_TO_PLAYLIST } from '../lib/queries';
 
 const formatViewCount = (count: number) => {
   if (count >= 10000) return `${(count / 10000).toFixed(1)}만`;
@@ -15,30 +17,173 @@ const inputStyle: React.CSSProperties = { backgroundColor: 'var(--bg-input)', bo
 const btnPrimary: React.CSSProperties = { backgroundColor: 'var(--accent)', color: '#1a1a1a' };
 const btnSecondary: React.CSSProperties = { backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' };
 
+// ─── 태그 자동완성 ────────────────────────────────────────────
+const TagInput: React.FC<{ value: string; onChange: (val: string) => void }> = ({ value, onChange }) => {
+  const [showDropdown, setShowDropdown] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const parts = value.split(',');
+  const currentInput = parts[parts.length - 1].trim();
+
+  const { data: tagData } = useQuery(GET_ALL_TAGS, {
+    variables: { keyword: currentInput || undefined, limit: 10, page: 1 },
+    skip: !currentInput,
+  });
+  const suggestions: string[] = (tagData?.getAllTags ?? []).map((t: any) => t.name);
+  const alreadySelected = value.split(',').map(t => t.trim()).filter(Boolean);
+  const filtered = suggestions.filter(s => !alreadySelected.includes(s));
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setShowDropdown(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleSelect = (tag: string) => {
+    const prevParts = value.split(',');
+    prevParts[prevParts.length - 1] = ` ${tag}`;
+    onChange(prevParts.join(',') + ', ');
+    setShowDropdown(false);
+  };
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <input
+        type="text"
+        value={value}
+        onChange={e => { onChange(e.target.value); setShowDropdown(true); }}
+        onFocus={() => currentInput && setShowDropdown(true)}
+        onKeyDown={e => e.key === 'Escape' && setShowDropdown(false)}
+        placeholder="태그1, 태그2..."
+        style={inputStyle}
+        className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none"
+      />
+      {showDropdown && filtered.length > 0 && (
+        <div className="absolute left-0 right-0 top-full mt-1 rounded-xl overflow-hidden z-50 shadow-lg"
+          style={{ backgroundColor: 'var(--bg-nav)', border: '1px solid var(--border)' }}>
+          {filtered.map(tag => (
+            <button key={tag} type="button"
+              onMouseDown={e => { e.preventDefault(); handleSelect(tag); }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left"
+              style={{ color: 'var(--text-primary)' }}
+              onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--bg-card)')}
+              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+            >
+              <span style={{ color: 'var(--accent)' }}>#</span>{tag}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── 비디오 선택기 ────────────────────────────────────────────
+const VideoSelector: React.FC<{
+  selectedVideos: VideoModel[];
+  onSelect: (video: VideoModel) => void;
+  onRemove: (id: string) => void;
+}> = ({ selectedVideos, onSelect, onRemove }) => {
+  const [search, setSearch] = useState('');
+  const [tagFilter, setTagFilter] = useState('');
+
+  const { data } = useQuery(GET_ALL_VIDEOS, {
+    variables: { keyword: search || undefined, tagName: tagFilter || undefined, sortBy: 'VIEW_COUNT', sortOrder: 'DESC', page: 1, limit: 20 },
+  });
+  const videos: VideoModel[] = data?.getAllVideos ?? [];
+  const selectedIds = selectedVideos.map(v => v.id);
+
+  return (
+    <div>
+      {/* 선택된 영상 */}
+      {selectedVideos.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {selectedVideos.map((v, idx) => (
+            <div key={v.id} className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs"
+              style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }}>
+              <span style={{ color: 'var(--accent)' }}>{idx + 1}.</span>
+              <span className="max-w-[120px] truncate">{v.videoTitle ?? '제목 없음'}</span>
+              <button type="button" onClick={() => onRemove(v.id)}
+                className="ml-1 hover:opacity-70" style={{ color: '#ff8a8a' }}>✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 검색 */}
+      <div className="flex gap-2 mb-2">
+        <input type="text" placeholder="영상 검색..." value={search} onChange={e => setSearch(e.target.value)}
+          style={inputStyle} className="flex-1 px-3 py-1.5 rounded-lg text-sm focus:outline-none" />
+        <input type="text" placeholder="태그 필터" value={tagFilter} onChange={e => setTagFilter(e.target.value)}
+          style={inputStyle} className="w-24 px-3 py-1.5 rounded-lg text-sm focus:outline-none" />
+      </div>
+
+      {/* 영상 목록 */}
+      <div className="rounded-xl overflow-hidden overflow-y-auto max-h-52"
+        style={{ border: '1px solid var(--border)' }}>
+        {videos.length === 0 ? (
+          <div className="px-4 py-6 text-center text-sm" style={{ color: 'var(--text-muted)' }}>영상이 없어요.</div>
+        ) : (
+          videos.map(video => {
+            const isSelected = selectedIds.includes(video.id);
+            return (
+              <button key={video.id} type="button"
+                onClick={() => !isSelected && onSelect(video)}
+                disabled={isSelected}
+                className="w-full flex items-center gap-3 px-3 py-2 text-left transition-colors"
+                style={{
+                  backgroundColor: isSelected ? 'var(--bg-card)' : 'transparent',
+                  opacity: isSelected ? 0.5 : 1,
+                  cursor: isSelected ? 'default' : 'pointer',
+                }}
+                onMouseEnter={e => !isSelected && (e.currentTarget.style.backgroundColor = 'var(--bg-card)')}
+                onMouseLeave={e => !isSelected && (e.currentTarget.style.backgroundColor = 'transparent')}
+              >
+                {video.thumbnail
+                  ? <img src={video.thumbnail} alt="" className="w-16 aspect-video object-cover rounded flex-shrink-0" />
+                  : <div className="w-16 aspect-video rounded flex-shrink-0" style={{ backgroundColor: 'var(--bg-input)' }} />
+                }
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium line-clamp-1" style={{ color: 'var(--text-primary)' }}>{video.videoTitle ?? '제목 없음'}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{video.channelName}</p>
+                </div>
+                {isSelected && <span className="text-xs flex-shrink-0" style={{ color: 'var(--accent)' }}>✓</span>}
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─── 플레이리스트 상세 ────────────────────────────────────────
 const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBack }) => {
   const { isLoggedIn } = useAuth();
   const { data, loading, refetch } = useQuery(GET_PLAYLIST_BY_ID, { variables: { id } });
   const [removeVideo] = useMutation(REMOVE_VIDEO_FROM_PLAYLIST);
-  const [addVideo] = useMutation(ADD_VIDEO_TO_PLAYLIST);
-  const [videoIdInput, setVideoIdInput] = useState('');
+  const [addVideoMutation] = useMutation(ADD_VIDEO_TO_PLAYLIST);
+  const [showAddVideo, setShowAddVideo] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<VideoModel | null>(null);
+  const [searchKeyword, setSearchKeyword] = useState('');
   const playlist: PlaylistModel | undefined = data?.getPlaylistById;
 
+  const { data: videoData } = useQuery(GET_ALL_VIDEOS, {
+    variables: { keyword: searchKeyword || undefined, sortBy: 'VIEW_COUNT', sortOrder: 'DESC', page: 1, limit: 20 },
+    skip: !showAddVideo,
+  });
+  const searchVideos: VideoModel[] = videoData?.getAllVideos ?? [];
+
   const handleAddVideo = async () => {
-    if (!videoIdInput.trim()) return;
-
+    if (!selectedVideo) return;
     try {
-      await addVideo({
-        variables: {
-          playlistId: id,
-          videoId: videoIdInput.trim(),
-        },
-      });
-
-      setVideoIdInput('');
+      await addVideoMutation({ variables: { playlistId: id, videoId: selectedVideo.id } });
+      setSelectedVideo(null);
+      setShowAddVideo(false);
       refetch();
-    } catch (e) {
-      alert('추가 실패');
-    }
+    } catch { alert('추가 실패'); }
   };
 
   const handleRemove = async (videoId: string) => {
@@ -58,7 +203,7 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
     <div className="min-h-screen pt-14" style={{ backgroundColor: 'var(--bg-base)' }}>
       <div className="max-w-screen-lg mx-auto px-4 py-6">
         <button onClick={onBack} className="flex items-center gap-1 text-sm mb-6 hover:opacity-70 transition-opacity" style={{ color: 'var(--text-secondary)' }}>← 목록으로</button>
-        <div className="mb-6">
+        <div className="mb-4">
           <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{playlist.name}</h1>
           <div className="flex items-center gap-3 mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
             <span>영상 {playlist.videos.length}개</span><span>·</span><span>조회수 {formatViewCount(playlist.viewCount)}</span>
@@ -71,25 +216,59 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
             </div>
           )}
         </div>
-        {isLoggedIn && (
-          <div className="flex gap-2 mb-4">
-            <input
-              type="text"
-              value={videoIdInput}
-              onChange={e => setVideoIdInput(e.target.value)}
-              placeholder="추가할 영상 ID"
-              style={inputStyle}
-              className="flex-1 px-3 py-2 rounded-lg text-sm"
-            />
-            <button
-              onClick={handleAddVideo}
-              style={btnPrimary}
-              className="px-4 py-2 rounded-lg text-sm"
-            >
-              추가
+
+        {/* 영상 추가 (누구나) */}
+        <div className="mb-4">
+          {!showAddVideo ? (
+            <button onClick={() => setShowAddVideo(true)} style={btnSecondary}
+              className="px-4 py-2 rounded-lg text-sm hover:opacity-80 transition-opacity">
+              + 영상 추가
             </button>
-          </div>
-        )}
+          ) : (
+            <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+              <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-primary)' }}>추가할 영상 선택</p>
+              <input type="text" placeholder="영상 검색..." value={searchKeyword} onChange={e => setSearchKeyword(e.target.value)}
+                style={inputStyle} className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none mb-2" />
+              <div className="rounded-xl overflow-y-auto max-h-48" style={{ border: '1px solid var(--border)' }}>
+                {searchVideos.map(video => {
+                  const isInPlaylist = playlist.videos.some(v => v.id === video.id);
+                  const isSelected = selectedVideo?.id === video.id;
+                  return (
+                    <button key={video.id} type="button"
+                      onClick={() => !isInPlaylist && setSelectedVideo(video)}
+                      disabled={isInPlaylist}
+                      className="w-full flex items-center gap-3 px-3 py-2 text-left transition-colors"
+                      style={{ backgroundColor: isSelected ? 'var(--bg-input)' : 'transparent', opacity: isInPlaylist ? 0.4 : 1 }}
+                      onMouseEnter={e => !isInPlaylist && (e.currentTarget.style.backgroundColor = 'var(--bg-input)')}
+                      onMouseLeave={e => !isSelected && (e.currentTarget.style.backgroundColor = 'transparent')}
+                    >
+                      {video.thumbnail
+                        ? <img src={video.thumbnail} alt="" className="w-16 aspect-video object-cover rounded flex-shrink-0" />
+                        : <div className="w-16 aspect-video rounded flex-shrink-0" style={{ backgroundColor: 'var(--bg-input)' }} />
+                      }
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium line-clamp-1" style={{ color: 'var(--text-primary)' }}>{video.videoTitle ?? '제목 없음'}</p>
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{video.channelName}</p>
+                      </div>
+                      {isInPlaylist && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>이미 추가됨</span>}
+                      {isSelected && !isInPlaylist && <span className="text-xs" style={{ color: 'var(--accent)' }}>✓ 선택됨</span>}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex justify-end gap-2 mt-3">
+                <button type="button" onClick={() => { setShowAddVideo(false); setSelectedVideo(null); }}
+                  className="px-4 py-2 text-sm hover:opacity-70 transition-opacity" style={{ color: 'var(--text-muted)' }}>취소</button>
+                <button type="button" onClick={handleAddVideo} disabled={!selectedVideo} style={btnPrimary}
+                  className="px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-40 hover:opacity-80 transition-opacity">
+                  추가
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 영상 목록 */}
         <div className="space-y-1.5">
           {playlist.videos.map((video, idx) => (
             <div key={video.id} className="flex items-center gap-3 p-3 rounded-xl transition-colors group"
@@ -105,19 +284,21 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
                   </div>
               }
               <div className="flex-1 min-w-0">
-                <a href={video.videoUrl ?? '#'} target="_blank" rel="noreferrer" className="block text-sm font-medium line-clamp-2 hover:opacity-70 transition-opacity" style={{ color: 'var(--text-primary)' }}>
+                <a href={video.videoUrl ?? '#'} target="_blank" rel="noreferrer"
+                  className="block text-sm font-medium line-clamp-2 hover:opacity-70 transition-opacity" style={{ color: 'var(--text-primary)' }}>
                   {video.videoTitle ?? '제목 없음'}
                 </a>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{video.channelName}</p>
               </div>
               {isLoggedIn && (
-                <button onClick={() => handleRemove(video.id)} className="text-xs flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: '#ff8a8a' }}>제거</button>
+                <button onClick={() => handleRemove(video.id)}
+                  className="text-xs flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: '#ff8a8a' }}>제거</button>
               )}
             </div>
           ))}
           {playlist.videos.length === 0 && (
             <div className="flex flex-col items-center justify-center py-40">
-              <img src="/logo.png" alt="빈 플레이리스트" className="w-[300px] sm:w-[400px] lg:w-[500px] h-auto mb-4 opacity-20 grayscale" />
+              <img src="/logo.png" alt="" className="w-[300px] sm:w-[400px] lg:w-[500px] h-auto mb-4 opacity-20 grayscale" />
             </div>
           )}
         </div>
@@ -126,6 +307,7 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
   );
 };
 
+// ─── 메인 페이지 ──────────────────────────────────────────────
 export const PlaylistsPage: React.FC = () => {
   const { isLoggedIn } = useAuth();
   const [keyword, setKeyword] = useState('');
@@ -136,9 +318,9 @@ export const PlaylistsPage: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newName, setNewName] = useState('');
-  const [createError, setCreateError] = useState('');
   const [newTags, setNewTags] = useState('');
-  const [newVideoIds, setNewVideoIds] = useState('');
+  const [selectedVideos, setSelectedVideos] = useState<VideoModel[]>([]);
+  const [createError, setCreateError] = useState('');
 
   const { data, loading, refetch } = useQuery(GET_ALL_PLAYLISTS, {
     variables: { keyword: keyword || undefined, tagName: tagName || undefined, sortBy, sortOrder, page, limit: 20 },
@@ -148,29 +330,17 @@ export const PlaylistsPage: React.FC = () => {
   const playlists: PlaylistModel[] = data?.getAllPlaylists ?? [];
 
   const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setPage(1); refetch(); };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault(); setCreateError('');
     try {
-      await createPlaylist({
-        variables: {
-          data: {
-            name: newName,
-            tags: newTags ? newTags.split(',').map(t => t.trim()) : [],
-            videoIds: newVideoIds
-              ? newVideoIds.split(',').map(v => v.trim())
-              : [],
-          },
-        },
-      });
-      setNewName('');
-      setNewTags('');
-      setNewVideoIds('');
-      
-      setShowCreateModal(false);
-      refetch();
-
+      const tagNames = newTags.split(',').map(t => t.trim()).filter(Boolean);
+      const videoIds = selectedVideos.map(v => v.id);
+      await createPlaylist({ variables: { data: { name: newName }, tagNames: tagNames.length ? tagNames : undefined, videoIds: videoIds.length ? videoIds : undefined } });
+      setNewName(''); setNewTags(''); setSelectedVideos([]); setShowCreateModal(false); refetch();
     } catch (err: any) { setCreateError(err.message || '오류가 발생했어요.'); }
   };
+
   const handleDelete = async (id: string) => {
     if (!window.confirm('플레이리스트를 삭제하시겠어요?')) return;
     await deletePlaylist({ variables: { playlistId: id } });
@@ -191,20 +361,13 @@ export const PlaylistsPage: React.FC = () => {
             <button type="submit" style={btnPrimary} className="px-5 py-2 rounded-lg text-sm font-bold hover:opacity-80 transition-opacity">검색</button>
             <button type="button" onClick={() => setShowCreateModal(true)} style={btnSecondary} className="px-5 py-2 rounded-lg text-sm font-medium hover:opacity-80 transition-opacity">+ 생성</button>
           </div>
-          {/* 정렬 - 검색바 아래 오른쪽 */}
           <div className="flex justify-end">
-            <select
-              value={`${sortBy}_${sortOrder}`}
-              onChange={e => {
-                const val = e.target.value;
-                const order = val.endsWith('_DESC') ? 'DESC' : 'ASC';
-                const by = val.replace(/_DESC$|_ASC$/, '');
-                setSortBy(by as PlaylistSortBy);
-                setSortOrder(order as SortOrder);
-              }}
-              style={inputStyle}
-              className="px-3 py-2 rounded-lg text-sm focus:outline-none"
-            >
+            <select value={`${sortBy}_${sortOrder}`} onChange={e => {
+              const val = e.target.value;
+              const order = val.endsWith('_DESC') ? 'DESC' : 'ASC';
+              const by = val.replace(/_DESC$|_ASC$/, '');
+              setSortBy(by as PlaylistSortBy); setSortOrder(order as SortOrder);
+            }} style={inputStyle} className="px-3 py-2 rounded-lg text-sm focus:outline-none">
               <option value="VIEW_COUNT_DESC">인기순</option>
               <option value="CREATED_AT_DESC">최신순</option>
               <option value="NAME_ASC">이름순</option>
@@ -223,8 +386,8 @@ export const PlaylistsPage: React.FC = () => {
             ))}
           </div>
         ) : playlists.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-40" style={{ color: 'var(--text-muted)' }}>
-            <img src="/logo.png" alt="빈 플레이리스트" className="w-[300px] sm:w-[400px] lg:w-[500px] h-auto mb-4 opacity-20 grayscale" />
+          <div className="flex flex-col items-center justify-center py-40">
+            <img src="/logo.png" alt="" className="w-[300px] sm:w-[400px] lg:w-[500px] h-auto mb-4 opacity-20 grayscale" />
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -271,9 +434,10 @@ export const PlaylistsPage: React.FC = () => {
         </div>
       </div>
 
+      {/* 생성 모달 */}
       {showCreateModal && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
-          <div className="rounded-2xl p-6 w-full max-w-md" style={{ backgroundColor: 'var(--bg-nav)', border: '1px solid var(--border)' }}>
+          <div className="rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-nav)', border: '1px solid var(--border)' }}>
             <h2 className="text-lg font-bold mb-4">플레이리스트 생성</h2>
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
@@ -282,35 +446,34 @@ export const PlaylistsPage: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
-                  태그 (콤마로 구분)
+                  태그 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>(입력하면 기존 태그 추천)</span>
                 </label>
-                <input
-                  type="text"
-                  value={newTags}
-                  onChange={e => setNewTags(e.target.value)}
-                  placeholder="태그 입력..."
-                  style={inputStyle}
-                  className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none"
-                />
+                <TagInput value={newTags} onChange={setNewTags} />
+                {newTags.split(',').map(t => t.trim()).filter(Boolean).length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {newTags.split(',').map(t => t.trim()).filter(Boolean).map(tag => (
+                      <span key={tag} className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'var(--bg-card)', color: 'var(--accent)' }}>#{tag}</span>
+                    ))}
+                  </div>
+                )}
               </div>
-
               <div>
                 <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
-                  영상 ID (콤마로 구분)
+                  영상 추가 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>(선택사항)</span>
                 </label>
-                <input
-                  type="text"
-                  value={newVideoIds}
-                  onChange={e => setNewVideoIds(e.target.value)}
-                  placeholder="videoId1, videoId2"
-                  style={inputStyle}
-                  className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none"
+                <VideoSelector
+                  selectedVideos={selectedVideos}
+                  onSelect={v => setSelectedVideos(prev => [...prev, v])}
+                  onRemove={id => setSelectedVideos(prev => prev.filter(v => v.id !== id))}
                 />
               </div>
               {createError && <p className="text-sm" style={{ color: '#ff8a8a' }}>{createError}</p>}
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setShowCreateModal(false)} className="px-4 py-2 text-sm hover:opacity-70 transition-opacity" style={{ color: 'var(--text-muted)' }}>취소</button>
-                <button type="submit" disabled={creating} style={btnPrimary} className="px-5 py-2 rounded-lg text-sm font-bold disabled:opacity-50 hover:opacity-80 transition-opacity">{creating ? '생성 중...' : '생성'}</button>
+                <button type="button" onClick={() => { setShowCreateModal(false); setNewName(''); setNewTags(''); setSelectedVideos([]); }}
+                  className="px-4 py-2 text-sm hover:opacity-70 transition-opacity" style={{ color: 'var(--text-muted)' }}>취소</button>
+                <button type="submit" disabled={creating} style={btnPrimary} className="px-5 py-2 rounded-lg text-sm font-bold disabled:opacity-50 hover:opacity-80 transition-opacity">
+                  {creating ? '생성 중...' : '생성'}
+                </button>
               </div>
             </form>
           </div>
