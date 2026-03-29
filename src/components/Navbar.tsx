@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { path: '/videos', label: '비디오' },
   { path: '/playlists', label: '플레이리스트' },
   { path: '/tags', label: '태그 관리' },
+  { path: '/report', label: '신고/문의' },
 ];
 
 export const Navbar: React.FC = () => {
@@ -15,17 +16,15 @@ export const Navbar: React.FC = () => {
   return (
     <nav style={{ backgroundColor: 'var(--bg-nav)', borderBottom: '1px solid var(--border)' }}
       className="fixed top-0 left-0 right-0 z-50">
-      <div className="max-w-screen-2xl mx-auto px-6 h-20 flex items-center justify-between">
-      <Link to="/videos" className="flex items-center gap-3 mr-10 leading-none">
-        <img
-          src="/logo.png"
-          alt="SeanLink Logo"
-          className="w-16 h-16 object-contain -translate-y-1 transition-transform duration-200 hover:scale-110"
-        />
-        <span className="font-bold text-xl tracking-tight text-[var(--accent)]">
-          SeanLink
-        </span>
-      </Link>
+      <div className="max-w-screen-2xl mx-auto px-4 h-14 flex items-center justify-between">
+        {/* Logo */}
+        <Link to="/videos" className="flex items-center gap-2 mr-8">
+          <span className="text-2xl">🎬</span>
+          <span className="font-bold text-base tracking-tight" style={{ color: 'var(--accent)' }}>
+            MediaHub
+          </span>
+        </Link>
+
         {/* Nav Links */}
         <div className="flex items-center gap-1 flex-1">
           {NAV_ITEMS.map(({ path, label }) => (

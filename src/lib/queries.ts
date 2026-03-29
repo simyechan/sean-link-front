@@ -191,6 +191,41 @@ export const DELETE_PLAYLIST = gql`
   }
 `;
 
+// ─── Report Queries & Mutations ──────────────────────────────
+export const GET_ALL_REPORTS = gql`
+  query GetAllReports($isResolved: Boolean) {
+    getAllReports(isResolved: $isResolved) {
+      id
+      createdAt
+      title
+      content
+      isResolved
+      adminComment
+    }
+  }
+`;
+
+export const CREATE_REPORT = gql`
+  mutation CreateReport($input: CreateReportInput!) {
+    createReport(input: $input) {
+      id
+      title
+      content
+      isResolved
+    }
+  }
+`;
+
+export const RESOLVE_REPORT = gql`
+  mutation ResolveReport($input: ResolveReportInput!) {
+    resolveReport(input: $input) {
+      id
+      isResolved
+      adminComment
+    }
+  }
+`;
+
 // ─── Admin Mutations ──────────────────────────────────────────
 export const ADMIN_LOGIN = gql`
   mutation AdminLogin($loginInput: AdminLoginInput!) {

@@ -50,3 +50,14 @@ export interface AdminModel {
   deletedAt?: string;
   loginId: string;
 }
+
+export interface ReportModel {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+  title: string;
+  content: string;
+  isResolved: boolean;
+  adminComment?: string;
+}
