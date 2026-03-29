@@ -162,7 +162,7 @@ const VideoSelector: React.FC<{
 // ─── 플레이리스트 상세 ────────────────────────────────────────
 const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBack }) => {
   const { isLoggedIn } = useAuth();
-  const { data, loading, refetch } = useQuery(GET_PLAYLIST_BY_ID, { variables: { id } });
+  const { data, loading, refetch } = useQuery(GET_PLAYLIST_BY_ID, { variables: { id }, fetchPolicy: 'network-only' });
   const [removeVideo] = useMutation(REMOVE_VIDEO_FROM_PLAYLIST);
   const [addVideoMutation] = useMutation(ADD_VIDEO_TO_PLAYLIST);
   const [showAddVideo, setShowAddVideo] = useState(false);

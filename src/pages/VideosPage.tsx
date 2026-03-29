@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useQuery, useMutation } from '@apollo/client';
-import { GET_ALL_VIDEOS, GET_ALL_TAGS, DELETE_VIDEO, ADD_VIDEO } from '../lib/queries';
+import { useQuery, useLazyQuery, useMutation } from '@apollo/client';
+import { GET_ALL_VIDEOS, GET_VIDEO_BY_ID, GET_ALL_TAGS, DELETE_VIDEO, ADD_VIDEO } from '../lib/queries';
 import { VideoModel, VideoSortBy, SortOrder } from '../types/models';
 import { useAuth } from '../context/AuthContext';
 
@@ -21,13 +21,8 @@ const inputStyle: React.CSSProperties = { backgroundColor: 'var(--bg-input)', bo
 const btnPrimary: React.CSSProperties = { backgroundColor: 'var(--accent)', color: '#1a1a1a' };
 const btnSecondary: React.CSSProperties = { backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' };
 
-
-// ✅ TagInput (multiple 지원 추가)
-const TagInput: React.FC<{
-  value: string;
-  onChange: (val: string) => void;
-  multiple?: boolean;
-}> = ({ value, onChange, multiple = true }) => {
+// ─── 태그 자동완성 ────────────────────────────────────────────
+const TagInput: React.FC<{ value: string; onChange: (val: string) => void; multiple?: boolean }> = ({ value, onChange, multiple = true }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -40,24 +35,16 @@ const TagInput: React.FC<{
   });
 
   const suggestions: string[] = (tagData?.getAllTags ?? []).map((t: any) => t.name);
-
   const alreadySelected = value.split(',').map(t => t.trim()).filter(Boolean);
   const filtered = suggestions.filter(s => !alreadySelected.includes(s));
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setShowDropdown(false);
-      }
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setShowDropdown(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.value);
-    setShowDropdown(true);
-  };
 
   const handleSelect = (tag: string) => {
     if (multiple) {
@@ -75,28 +62,23 @@ const TagInput: React.FC<{
       <input
         type="text"
         value={value}
-        onChange={handleInputChange}
+        onChange={e => { onChange(e.target.value); setShowDropdown(true); }}
         onFocus={() => currentInput && setShowDropdown(true)}
+        onKeyDown={e => e.key === 'Escape' && setShowDropdown(false)}
         placeholder="태그 입력..."
         style={inputStyle}
         className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none"
       />
-
       {showDropdown && filtered.length > 0 && (
-        <div
-          className="absolute left-0 right-0 top-full mt-1 rounded-xl overflow-hidden z-50 shadow-lg"
-          style={{ backgroundColor: 'var(--bg-nav)', border: '1px solid var(--border)' }}
-        >
+        <div className="absolute left-0 right-0 top-full mt-1 rounded-xl overflow-hidden z-50 shadow-lg"
+          style={{ backgroundColor: 'var(--bg-nav)', border: '1px solid var(--border)' }}>
           {filtered.map(tag => (
-            <button
-              key={tag}
-              type="button"
-              onMouseDown={e => {
-                e.preventDefault();
-                handleSelect(tag);
-              }}
+            <button key={tag} type="button"
+              onMouseDown={e => { e.preventDefault(); handleSelect(tag); }}
               className="w-full px-3 py-2 text-sm text-left hover:opacity-80"
               style={{ color: 'var(--text-primary)' }}
+              onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--bg-card)')}
+              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
             >
               <span style={{ color: 'var(--accent)' }}>#</span> {tag}
             </button>
@@ -106,7 +88,6 @@ const TagInput: React.FC<{
     </div>
   );
 };
-
 
 // ─── 메인 페이지 ──────────────────────────────────────────────
 export const VideosPage: React.FC = () => {
@@ -124,6 +105,11 @@ export const VideosPage: React.FC = () => {
 
   const { data, loading, error, refetch } = useQuery(GET_ALL_VIDEOS, {
     variables: { keyword: keyword || undefined, tagName: tagName || undefined, sortBy, sortOrder, page, limit: 20 },
+  });
+
+  // 조회수 증가용 - 클릭 시 호출
+  const [fetchVideoById] = useLazyQuery(GET_VIDEO_BY_ID, {
+    fetchPolicy: 'network-only',
   });
 
   const [deleteVideo] = useMutation(DELETE_VIDEO);
@@ -150,11 +136,18 @@ export const VideosPage: React.FC = () => {
     }
   };
 
+  // 영상 클릭 시 조회수 증가 + 새 탭 열기
+  const handleVideoClick = (video: VideoModel, e: React.MouseEvent) => {
+    // getVideoById 호출로 조회수 증가
+    fetchVideoById({ variables: { id: video.id } });
+    // 새 탭으로 이동 (기본 동작 유지)
+  };
+
   return (
     <div className="min-h-screen pt-20" style={{ backgroundColor: 'var(--bg-base)' }}>
       <div className="max-w-screen-2xl mx-auto px-4 py-6">
 
-        {/* 🔥 검색바 */}
+        {/* 검색바 */}
         <div className="mb-6">
           <div className="flex gap-2 mb-2">
             <input
@@ -163,30 +156,14 @@ export const VideosPage: React.FC = () => {
               value={keyword}
               onChange={e => setKeyword(e.target.value)}
               style={inputStyle}
-              className="flex-1 px-4 py-2 rounded-lg text-sm"
+              className="flex-1 px-4 py-2 rounded-lg text-sm focus:outline-none"
             />
-
-            {/* ✅ 여기 바뀜 */}
             <div className="w-36">
-              <TagInput
-                value={tagName}
-                onChange={(val) => {
-                  setTagName(val);
-                  setPage(1);
-                }}
-                multiple={false}
-              />
+              <TagInput value={tagName} onChange={val => { setTagName(val); setPage(1); }} multiple={false} />
             </div>
-
-            <button onClick={() => handleSearch()} style={btnPrimary} className="px-5 py-2 rounded-lg text-sm font-bold">
-              검색
-            </button>
-
-            <button type="button" onClick={() => setShowAddModal(true)} style={btnSecondary} className="px-4 py-2 rounded-lg text-sm">
-              + 추가
-            </button>
+            <button onClick={() => handleSearch()} style={btnPrimary} className="px-5 py-2 rounded-lg text-sm font-bold hover:opacity-80 transition-opacity">검색</button>
+            <button type="button" onClick={() => setShowAddModal(true)} style={btnSecondary} className="px-4 py-2 rounded-lg text-sm hover:opacity-80 transition-opacity">+ 추가</button>
           </div>
-
           <div className="flex justify-end">
             <select
               value={`${sortBy}_${sortOrder}`}
@@ -198,7 +175,7 @@ export const VideosPage: React.FC = () => {
                 setSortOrder(order as SortOrder);
               }}
               style={inputStyle}
-              className="px-3 py-2 rounded-lg text-sm"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none"
             >
               <option value="VIEW_COUNT_DESC">인기순</option>
               <option value="CREATED_AT_DESC">최신순</option>
@@ -207,7 +184,7 @@ export const VideosPage: React.FC = () => {
           </div>
         </div>
 
-       {error && (
+        {error && (
           <div className="mb-4 px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: '#4a1a1a', border: '1px solid #7a2a2a', color: '#ff8a8a' }}>
             에러: {error.message}
           </div>
@@ -253,7 +230,12 @@ export const VideosPage: React.FC = () => {
                       {video.platform === 'CHZZK' ? 'CHZZK' : 'YT'}
                     </span>
                   )}
-                  <a href={video.videoUrl ?? '#'} target="_blank" rel="noreferrer"
+                  {/* 클릭 시 조회수 증가 + 새 탭 이동 */}
+                  <a
+                    href={video.videoUrl ?? '#'}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={e => handleVideoClick(video, e)}
                     className="absolute inset-0 flex items-center justify-center"
                     onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.3)')}
                     onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
@@ -270,7 +252,15 @@ export const VideosPage: React.FC = () => {
                     : <div className="w-7 h-7 rounded-full flex-shrink-0 mt-0.5" style={{ backgroundColor: 'var(--bg-card)' }} />
                   }
                   <div className="flex-1 min-w-0">
-                    <a href={video.videoUrl ?? '#'} target="_blank" rel="noreferrer" className="block text-sm font-medium leading-snug line-clamp-2 hover:opacity-70 transition-opacity" style={{ color: 'var(--text-primary)' }}>
+                    {/* 제목 클릭도 조회수 증가 */}
+                    <a
+                      href={video.videoUrl ?? '#'}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={e => handleVideoClick(video, e)}
+                      className="block text-sm font-medium leading-snug line-clamp-2 hover:opacity-70 transition-opacity"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
                       {video.videoTitle ?? '제목 없음'}
                     </a>
                     <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-secondary)' }}>{video.channelName}</p>
@@ -320,15 +310,11 @@ export const VideosPage: React.FC = () => {
                   태그
                   <span className="ml-1 text-xs" style={{ color: 'var(--text-muted)' }}>(쉼표로 구분, 입력하면 기존 태그 추천)</span>
                 </label>
-                {/* 태그 자동완성 */}
                 <TagInput value={addTags} onChange={setAddTags} />
-                {/* 선택된 태그 미리보기 */}
                 {addTags.split(',').map(t => t.trim()).filter(Boolean).length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-2">
                     {addTags.split(',').map(t => t.trim()).filter(Boolean).map(tag => (
-                      <span key={tag} className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'var(--bg-card)', color: 'var(--accent)' }}>
-                        #{tag}
-                      </span>
+                      <span key={tag} className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'var(--bg-card)', color: 'var(--accent)' }}>#{tag}</span>
                     ))}
                   </div>
                 )}
