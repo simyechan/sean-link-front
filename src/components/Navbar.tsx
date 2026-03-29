@@ -17,11 +17,14 @@ export const Navbar: React.FC = () => {
     <nav style={{ backgroundColor: 'var(--bg-nav)', borderBottom: '1px solid var(--border)' }}
       className="fixed top-0 left-0 right-0 z-50">
       <div className="max-w-screen-2xl mx-auto px-4 h-14 flex items-center justify-between">
-        {/* Logo */}
+        <img
+          src="/logo.png"
+          alt="SeanLink Logo"
+          className="w-16 h-16 object-contain -translate-y-1 transition-transform duration-200 hover:scale-110"
+        />
         <Link to="/videos" className="flex items-center gap-2 mr-8">
-          <span className="text-2xl">🎬</span>
           <span className="font-bold text-base tracking-tight" style={{ color: 'var(--accent)' }}>
-            MediaHub
+            SeanLink
           </span>
         </Link>
 
