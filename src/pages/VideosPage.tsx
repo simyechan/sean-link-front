@@ -179,6 +179,7 @@ export const VideosPage: React.FC = () => {
             >
               <option value="VIEW_COUNT_DESC">인기순</option>
               <option value="CREATED_AT_DESC">최신순</option>
+              <option value="CREATED_AT_ASC">등록순</option>
               <option value="TITLE_ASC">제목순</option>
             </select>
           </div>
