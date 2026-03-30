@@ -47,7 +47,7 @@ export const Navbar: React.FC = () => {
         </div>
 
         {/* Auth */}
-        {isLoggedIn ? (
+        {isLoggedIn && (
           <button
             onClick={logout}
             style={{ color: 'var(--text-muted)' }}
@@ -55,14 +55,6 @@ export const Navbar: React.FC = () => {
           >
             로그아웃
           </button>
-        ) : (
-          <Link
-            to="/login"
-            style={{ backgroundColor: 'var(--accent)', color: '#1a1a1a' }}
-            className="px-4 py-1.5 rounded text-sm font-bold transition-opacity hover:opacity-80"
-          >
-            어드민 로그인
-          </Link>
         )}
       </div>
     </nav>
