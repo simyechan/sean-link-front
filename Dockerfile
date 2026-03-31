@@ -15,7 +15,7 @@ RUN yarn build
 FROM nginx:1.25-alpine AS production
 
 # 빌드 결과물 복사
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /app/build /usr/share/nginx/html
 
 # Nginx 설정 복사
 COPY nginx.conf /etc/nginx/conf.d/default.conf
