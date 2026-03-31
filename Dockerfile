@@ -4,12 +4,12 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # 의존성 먼저 복사 (레이어 캐싱 최적화)
-COPY package*.json ./
-RUN npm ci
+COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile
 
 # 소스 복사 및 빌드
 COPY . .
-RUN npm run build
+RUN yarn build
 
 # ── Stage 2: Production (Nginx) ──────────────────────────────────
 FROM nginx:1.25-alpine AS production
