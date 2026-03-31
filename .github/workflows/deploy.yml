@@ -83,8 +83,8 @@ jobs:
             cd ~/app
 
             # GHCR 로그인 (EC2에서 pull 시 필요)
-            # GHCR_TOKEN은 읽기 전용 Personal Access Token (classic, read:packages 권한)
-            echo "${{ secrets.GHCR_TOKEN }}" | \
+            # GITHUB_TOKEN은 읽기 전용 Personal Access Token (classic, read:packages 권한)
+            echo "${{ secrets.GITHUB_TOKEN }}" | \
               docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
             # 최신 이미지 pull
