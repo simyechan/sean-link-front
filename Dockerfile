@@ -9,6 +9,11 @@ RUN yarn install --frozen-lockfile
 
 # 소스 복사 및 빌드
 COPY . .
+
+# CRA 환경변수 빌드 시점 주입
+ARG REACT_APP_GRAPHQL_URL
+ENV REACT_APP_GRAPHQL_URL=$REACT_APP_GRAPHQL_URL
+
 RUN yarn build
 
 # ── Stage 2: Production (Nginx) ──────────────────────────────────
