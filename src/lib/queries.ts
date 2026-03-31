@@ -246,3 +246,54 @@ export const ADMIN_REFRESH = gql`
     adminRefresh
   }
 `;
+
+// ── 비디오 태그 추가 / 제거 ────────────────────────────────────
+export const ADD_TAG_TO_VIDEO = gql`
+  mutation AddTagToVideo($videoId: String!, $tagName: String!) {
+    addTagToVideo(videoId: $videoId, tagName: $tagName) {
+      id
+      tags {
+        id
+        name
+      }
+    }
+  }
+`;
+
+export const REMOVE_TAG_FROM_VIDEO = gql`
+  mutation RemoveTagFromVideo($videoId: String!, $tagName: String!) {
+    removeTagFromVideo(videoId: $videoId, tagName: $tagName) {
+      id
+      tags {
+        id
+        name
+      }
+    }
+  }
+`;
+
+// ── 플레이리스트 태그 추가 / 제거 ─────────────────────────────
+export const ADD_TAG_TO_PLAYLIST = gql`
+  mutation AddTagToPlaylist($playlistId: String!, $tagName: String!) {
+    addTagToPlaylist(playlistId: $playlistId, tagName: $tagName) {
+      id
+      tags {
+        id
+        name
+      }
+    }
+  }
+`;
+
+export const REMOVE_TAG_FROM_PLAYLIST = gql`
+  mutation RemoveTagFromPlaylist($playlistId: String!, $tagName: String!) {
+    removeTagFromPlaylist(playlistId: $playlistId, tagName: $tagName) {
+      id
+      tags {
+        id
+        name
+      }
+    }
+  }
+`;
+
