@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  frontend:
+    image: ${DOCKER_IMAGE:-my-frontend:latest}   # GitHub Actions에서 이미지 태그 주입
+    container_name: frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # 필요 시 HTTPS를 위한 Certbot + Nginx Proxy (주석 해제)
+  # certbot:
+  #   image: certbot/certbot
+  #   volumes:
+  #     - ./certbot/conf:/etc/letsencrypt
+  #     - ./certbot/www:/var/www/certbot
