@@ -243,11 +243,13 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
   const [showAddVideo, setShowAddVideo] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<VideoModel | null>(null);
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [searchTagFilter, setSearchTagFilter] = useState('');
   const playlist: PlaylistModel | undefined = data?.getPlaylistById;
 
   const { data: videoData } = useQuery(GET_ALL_VIDEOS, {
     variables: {
       keyword: searchKeyword || undefined,
+      tagName: searchTagFilter || undefined,  // ← 추가
       sortBy: 'VIEW_COUNT',
       sortOrder: 'DESC',
       page: 1,
@@ -263,6 +265,7 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
       await addVideoMutation({ variables: { playlistId: id, videoId: selectedVideo.id } });
       setSelectedVideo(null);
       setShowAddVideo(false);
+      setSearchTagFilter('');
       refetch();
     } catch {
       alert('추가 실패');
@@ -358,14 +361,24 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
               >
                 추가할 영상 선택
               </p>
-              <input
-                type="text"
-                placeholder="영상 검색..."
-                value={searchKeyword}
-                onChange={e => setSearchKeyword(e.target.value)}
-                style={inputStyle}
-                className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none mb-2"
-              />
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  placeholder="영상 검색..."
+                  value={searchKeyword}
+                  onChange={e => setSearchKeyword(e.target.value)}
+                  style={inputStyle}
+                  className="flex-1 px-3 py-2 rounded-lg text-sm focus:outline-none"
+                />
+                <input
+                  type="text"
+                  placeholder="태그 필터"
+                  value={searchTagFilter}
+                  onChange={e => setSearchTagFilter(e.target.value)}
+                  style={inputStyle}
+                  className="w-24 px-3 py-2 rounded-lg text-sm focus:outline-none"
+                />
+              </div>
               <div
                 className="rounded-xl overflow-y-auto max-h-48"
                 style={{ border: '1px solid var(--border)' }}
