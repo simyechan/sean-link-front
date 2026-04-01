@@ -241,7 +241,7 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
   const [addTagToPlaylist] = useMutation(ADD_TAG_TO_PLAYLIST);
   const [removeTagFromPlaylist] = useMutation(REMOVE_TAG_FROM_PLAYLIST);
   const [showAddVideo, setShowAddVideo] = useState(false);
-  const [selectedVideo, setSelectedVideo] = useState<VideoModel | null>(null);
+  const [selectedVideos, setSelectedVideos] = useState<VideoModel[]>([]);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [searchTagFilter, setSearchTagFilter] = useState('');
   const playlist: PlaylistModel | undefined = data?.getPlaylistById;
@@ -260,10 +260,14 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
   const searchVideos: VideoModel[] = videoData?.getAllVideos ?? [];
 
   const handleAddVideo = async () => {
-    if (!selectedVideo) return;
+    if (selectedVideos.length === 0) return;
     try {
-      await addVideoMutation({ variables: { playlistId: id, videoId: selectedVideo.id } });
-      setSelectedVideo(null);
+      await Promise.all(
+        selectedVideos.map(v =>
+          addVideoMutation({ variables: { playlistId: id, videoId: v.id } })
+        )
+      );
+      setSelectedVideos([]);
       setShowAddVideo(false);
       setSearchTagFilter('');
       refetch();
@@ -385,14 +389,19 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
               >
                 {searchVideos.map(video => {
                   const isInPlaylist = playlist.videos.some(v => v.id === video.id);
-                  const isSelected = selectedVideo?.id === video.id;
+                  const isSelected = selectedVideos.some(v => v.id === video.id);
                   return (
                     <button
                       key={video.id}
                       type="button"
-                      onClick={() => !isInPlaylist && setSelectedVideo(video)}
+
+                      onClick={() => {
+                        if (isInPlaylist) return;
+                        setSelectedVideos(prev =>
+                          isSelected ? prev.filter(v => v.id !== video.id) : [...prev, video]
+                        );
+                      }}
                       disabled={isInPlaylist}
-                      className="w-full flex items-center gap-3 px-3 py-2 text-left transition-colors"
                       style={{
                         backgroundColor: isSelected ? 'var(--bg-input)' : 'transparent',
                         opacity: isInPlaylist ? 0.4 : 1,
@@ -444,7 +453,7 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
               <div className="flex justify-end gap-2 mt-3">
                 <button
                   type="button"
-                  onClick={() => { setShowAddVideo(false); setSelectedVideo(null); }}
+                  onClick={() => { setShowAddVideo(false); setSelectedVideos([]); setSearchTagFilter(''); }}
                   className="px-4 py-2 text-sm hover:opacity-70 transition-opacity"
                   style={{ color: 'var(--text-muted)' }}
                 >
@@ -453,11 +462,11 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
                 <button
                   type="button"
                   onClick={handleAddVideo}
-                  disabled={!selectedVideo}
+                  disabled={selectedVideos.length === 0}
                   style={btnPrimary}
                   className="px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-40 hover:opacity-80 transition-opacity"
                 >
-                  추가
+                  추가 {selectedVideos.length > 0 && `(${selectedVideos.length})`}
                 </button>
               </div>
             </div>
