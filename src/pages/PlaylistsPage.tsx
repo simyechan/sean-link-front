@@ -673,7 +673,7 @@ export const PlaylistsPage: React.FC = () => {
 
         {/* 검색바 */}
         <form onSubmit={handleSearch} className="mb-6">
-          <div className="flex gap-2 mb-2">
+          <div className="flex gap-2">
             <input
               type="text"
               placeholder="플레이리스트 이름 검색..."
@@ -690,6 +690,27 @@ export const PlaylistsPage: React.FC = () => {
               style={inputStyle}
               className="w-36 px-4 py-2 rounded-lg text-sm placeholder-gray-500 focus:outline-none"
             />
+            <div className="relative">
+            <select
+              value={`${sortBy}_${sortOrder}`}
+              onChange={e => {
+                const val = e.target.value;
+                const order = val.endsWith('_DESC') ? 'DESC' : 'ASC';
+                const by = val.replace(/_DESC$|_ASC$/, '');
+                setSortBy(by as PlaylistSortBy);
+                setSortOrder(order as SortOrder);
+              }}
+              style={inputStyle}
+              className="px-3 py-2 pr-8 rounded-lg text-sm focus:outline-none w-auto appearance-none cursor-pointer"
+            >
+              <option value="VIEW_COUNT_DESC">인기순</option>
+              <option value="CREATED_AT_DESC">최신순</option>
+              <option value="NAME_ASC">이름순</option>
+            </select>
+            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-sm" style={{ color: 'var(--text-muted)' }}>
+              ▾
+            </span>
+          </div>
             <button
               type="submit"
               style={btnPrimary}
@@ -705,24 +726,6 @@ export const PlaylistsPage: React.FC = () => {
             >
               + 생성
             </button>
-          </div>
-          <div className="flex justify-end">
-            <select
-              value={`${sortBy}_${sortOrder}`}
-              onChange={e => {
-                const val = e.target.value;
-                const order = val.endsWith('_DESC') ? 'DESC' : 'ASC';
-                const by = val.replace(/_DESC$|_ASC$/, '');
-                setSortBy(by as PlaylistSortBy);
-                setSortOrder(order as SortOrder);
-              }}
-              style={inputStyle}
-              className="px-3 py-2 rounded-lg text-sm focus:outline-none"
-            >
-              <option value="VIEW_COUNT_DESC">인기순</option>
-              <option value="CREATED_AT_DESC">최신순</option>
-              <option value="NAME_ASC">이름순</option>
-            </select>
           </div>
         </form>
 
