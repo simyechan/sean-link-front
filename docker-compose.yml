@@ -2,11 +2,11 @@ version: "3.9"
 
 services:
   frontend:
-    image: ${DOCKER_IMAGE:-my-frontend:latest}   # GitHub Actions에서 이미지 태그 주입
+    image: ghcr.io/simyechan/sean-link-front:latest
     container_name: frontend
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "3001:80"
     environment:
       - NODE_ENV=production
     healthcheck:
