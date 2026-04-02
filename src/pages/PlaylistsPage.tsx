@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useQuery, useMutation } from '@apollo/client';
+import { useQuery, useMutation, useLazyQuery } from '@apollo/client';
 import { Pagination } from '../components/Pagination';
 import {
   GET_ALL_PLAYLISTS, GET_PLAYLIST_BY_ID, GET_ALL_TAGS, GET_ALL_VIDEOS,
   CREATE_PLAYLIST, DELETE_PLAYLIST, REMOVE_VIDEO_FROM_PLAYLIST, ADD_VIDEO_TO_PLAYLIST,
   ADD_TAG_TO_PLAYLIST, REMOVE_TAG_FROM_PLAYLIST,
+  GET_VIDEO_BY_ID,
 } from '../lib/queries';
 import { PlaylistModel, VideoModel, PlaylistSortBy, SortOrder } from '../types/models';
 import { useAuth } from '../context/AuthContext';
@@ -180,6 +181,7 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
   const { isLoggedIn } = useAuth();
   const { data, loading, refetch } = useQuery(GET_PLAYLIST_BY_ID, { variables: { id }, fetchPolicy: 'network-only' });
   const [removeVideo] = useMutation(REMOVE_VIDEO_FROM_PLAYLIST);
+  const [fetchVideoById] = useLazyQuery(GET_VIDEO_BY_ID, { fetchPolicy: 'network-only' });
   const [addVideoMutation] = useMutation(ADD_VIDEO_TO_PLAYLIST);
   const [addTagToPlaylist] = useMutation(ADD_TAG_TO_PLAYLIST);
   const [removeTagFromPlaylist] = useMutation(REMOVE_TAG_FROM_PLAYLIST);
@@ -194,6 +196,10 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
     skip: !showAddVideo,
   });
   const searchVideos: VideoModel[] = videoData?.getAllVideos ?? [];
+
+  const handleVideoClick = (videoId: string, e: React.MouseEvent) => {
+    fetchVideoById({ variables: { id: videoId } });
+  };
 
   const handleAddVideo = async () => {
     if (selectedVideos.length === 0) return;
@@ -309,7 +315,10 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <a href={video.videoUrl ?? '#'} target="_blank" rel="noreferrer" className="block text-xs sm:text-sm font-medium line-clamp-2 hover:opacity-70 transition-opacity" style={{ color: 'var(--text-primary)' }}>
+                <a href={video.videoUrl ?? '#'} target="_blank" rel="noreferrer"
+                  onClick={e => handleVideoClick(video.id, e)}
+                  className="block text-xs sm:text-sm font-medium line-clamp-2 hover:opacity-70 transition-opacity"
+                  style={{ color: 'var(--text-primary)' }}>
                   {video.videoTitle ?? '제목 없음'}
                 </a>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{video.channelName}</p>
