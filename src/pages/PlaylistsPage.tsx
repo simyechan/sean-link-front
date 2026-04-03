@@ -30,6 +30,7 @@ const btnSecondary: React.CSSProperties = {
 };
 
 const VIDEO_LIMIT = 20;
+const PLAYLIST_VIDEO_PAGE_SIZE = 20;
 
 // ─── 페이지네이션 버튼 (공통) ─────────────────────────────────
 const VideoPagination: React.FC<{
@@ -234,9 +235,20 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
   const [searchKeyword, setSearchKeyword] = useState('');
   const [searchTagFilter, setSearchTagFilter] = useState('');
   const [videoPage, setVideoPage] = useState(1);
+
+  // 플레이리스트 내 영상 목록 페이지 (클라이언트 사이드)
+  const [listPage, setListPage] = useState(1);
+
   const playlist: PlaylistModel | undefined = data?.getPlaylistById;
 
   useEffect(() => { setVideoPage(1); }, [searchKeyword, searchTagFilter]);
+
+  // 영상 추가/제거 후 listPage가 범위를 벗어나지 않도록 보정
+  useEffect(() => {
+    if (!playlist) return;
+    const totalPages = Math.max(1, Math.ceil(playlist.videos.length / PLAYLIST_VIDEO_PAGE_SIZE));
+    if (listPage > totalPages) setListPage(totalPages);
+  }, [playlist?.videos.length]);
 
   const { data: videoData } = useQuery(GET_ALL_VIDEOS, {
     variables: {
@@ -283,6 +295,14 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
   if (!playlist)
     return <div className="min-h-screen pt-14 flex items-center justify-center" style={{ backgroundColor: 'var(--bg-base)', color: 'var(--text-muted)' }}>플레이리스트를 찾을 수 없어요.</div>;
 
+  // 현재 페이지에 표시할 영상 슬라이스 (클라이언트 페이지네이션)
+  const totalVideos = playlist.videos.length;
+  const totalListPages = Math.max(1, Math.ceil(totalVideos / PLAYLIST_VIDEO_PAGE_SIZE));
+  const pagedVideos = playlist.videos.slice(
+    (listPage - 1) * PLAYLIST_VIDEO_PAGE_SIZE,
+    listPage * PLAYLIST_VIDEO_PAGE_SIZE,
+  );
+
   return (
     <div className="min-h-screen pt-14" style={{ backgroundColor: 'var(--bg-base)' }}>
       <div className="max-w-screen-lg mx-auto px-4 py-6">
@@ -292,7 +312,7 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
         <div className="mb-4">
           <h1 className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{playlist.name}</h1>
           <div className="flex items-center gap-3 mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
-            <span>영상 {playlist.videos.length}개</span>
+            <span>영상 {totalVideos}개</span>
             <span>·</span>
             <span>조회수 {formatViewCount(playlist.viewCount)}</span>
           </div>
@@ -345,7 +365,7 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
                   );
                 })}
               </div>
-              {/* 페이지네이션 */}
+              {/* 영상 검색 페이지네이션 */}
               <VideoPagination
                 page={videoPage}
                 hasNext={hasNext}
@@ -377,42 +397,77 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
 
         {/* 영상 목록 */}
         <div className="space-y-1.5">
-          {playlist.videos.map((video, idx) => (
-            <div
-              key={video.id}
-              className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl transition-colors group"
-              onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--bg-card)')}
-              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-              style={{ backgroundColor: 'transparent' }}
-            >
-              <span className="text-sm w-5 sm:w-6 text-center flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{idx + 1}</span>
-              {video.thumbnail ? (
-                <img src={video.thumbnail} alt="" className="w-24 sm:w-32 aspect-video object-cover rounded-lg flex-shrink-0" />
-              ) : (
-                <div className="w-24 sm:w-32 aspect-video rounded-lg flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: 'var(--bg-card)' }}>
-                  <img src="/logo.png" alt="" className="w-10 h-10 object-contain opacity-70" />
+          {pagedVideos.map((video, idx) => {
+            const globalIdx = (listPage - 1) * PLAYLIST_VIDEO_PAGE_SIZE + idx;
+            return (
+              <div
+                key={video.id}
+                className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl transition-colors group"
+                onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--bg-card)')}
+                onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                style={{ backgroundColor: 'transparent' }}
+              >
+                <span className="text-sm w-5 sm:w-6 text-center flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{globalIdx + 1}</span>
+                {video.thumbnail ? (
+                  <img src={video.thumbnail} alt="" className="w-24 sm:w-32 aspect-video object-cover rounded-lg flex-shrink-0" />
+                ) : (
+                  <div className="w-24 sm:w-32 aspect-video rounded-lg flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: 'var(--bg-card)' }}>
+                    <img src="/logo.png" alt="" className="w-10 h-10 object-contain opacity-70" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <a
+                    href={video.videoUrl ?? '#'}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={e => handleVideoClick(video.id, e)}
+                    className="block text-xs sm:text-sm font-medium line-clamp-2 hover:opacity-70 transition-opacity"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    {video.videoTitle ?? '제목 없음'}
+                  </a>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{video.channelName}</p>
                 </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <a href={video.videoUrl ?? '#'} target="_blank" rel="noreferrer"
-                  onClick={e => handleVideoClick(video.id, e)}
-                  className="block text-xs sm:text-sm font-medium line-clamp-2 hover:opacity-70 transition-opacity"
-                  style={{ color: 'var(--text-primary)' }}>
-                  {video.videoTitle ?? '제목 없음'}
-                </a>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{video.channelName}</p>
+                {isLoggedIn && (
+                  <button onClick={() => handleRemove(video.id)} className="text-xs flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: '#ff8a8a' }}>제거</button>
+                )}
               </div>
-              {isLoggedIn && (
-                <button onClick={() => handleRemove(video.id)} className="text-xs flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: '#ff8a8a' }}>제거</button>
-              )}
-            </div>
-          ))}
-          {playlist.videos.length === 0 && (
+            );
+          })}
+
+          {totalVideos === 0 && (
             <div className="flex flex-col items-center justify-center py-40">
               <img src="/logo.png" alt="" className="w-[200px] sm:w-[400px] h-auto mb-4 opacity-20 grayscale" />
             </div>
           )}
         </div>
+
+        {/* 영상 목록 페이지네이션 — 2페이지 이상일 때만 표시 */}
+        {totalListPages > 1 && (
+          <div className="flex items-center justify-between mt-4 gap-2">
+            <button
+              type="button"
+              onClick={() => setListPage(p => Math.max(1, p - 1))}
+              disabled={listPage === 1}
+              className="flex-shrink-0 text-sm px-4 py-2 rounded-lg disabled:opacity-30 hover:opacity-70 transition-opacity"
+              style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-card)' }}
+            >
+              ← 이전
+            </button>
+            <span className="text-sm text-center flex-1 truncate" style={{ color: 'var(--text-muted)' }}>
+              {listPage} / {totalListPages} 페이지
+            </span>
+            <button
+              type="button"
+              onClick={() => setListPage(p => Math.min(totalListPages, p + 1))}
+              disabled={listPage === totalListPages}
+              className="flex-shrink-0 text-sm px-4 py-2 rounded-lg disabled:opacity-30 hover:opacity-70 transition-opacity"
+              style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-card)' }}
+            >
+              다음 →
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
