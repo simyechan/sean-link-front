@@ -29,6 +29,40 @@ const btnSecondary: React.CSSProperties = {
   color: 'var(--text-secondary)',
 };
 
+const VIDEO_LIMIT = 20;
+
+// ─── 페이지네이션 버튼 (공통) ─────────────────────────────────
+const VideoPagination: React.FC<{
+  page: number;
+  hasNext: boolean;
+  onPrev: () => void;
+  onNext: () => void;
+}> = ({ page, hasNext, onPrev, onNext }) => (
+  <div className="flex items-center justify-between mt-2 gap-2">
+    <button
+      type="button"
+      onClick={onPrev}
+      disabled={page === 1}
+      className="flex-shrink-0 text-xs px-2 py-1.5 rounded-lg disabled:opacity-30 hover:opacity-70 transition-opacity"
+      style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-card)' }}
+    >
+      ← 이전
+    </button>
+    <span className="text-xs text-center flex-1 truncate" style={{ color: 'var(--text-muted)' }}>
+      {page} 페이지
+    </span>
+    <button
+      type="button"
+      onClick={onNext}
+      disabled={!hasNext}
+      className="flex-shrink-0 text-xs px-2 py-1.5 rounded-lg disabled:opacity-30 hover:opacity-70 transition-opacity"
+      style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-card)' }}
+    >
+      다음 →
+    </button>
+  </div>
+);
+
 // ─── 태그 자동완성 ────────────────────────────────────────────
 const TagInput: React.FC<{ value: string; onChange: (val: string) => void }> = ({ value, onChange }) => {
   const [showDropdown, setShowDropdown] = useState(false);
@@ -105,6 +139,9 @@ const VideoSelector: React.FC<{
 }> = ({ selectedVideos, onSelect, onRemove }) => {
   const [search, setSearch] = useState('');
   const [tagFilter, setTagFilter] = useState('');
+  const [page, setPage] = useState(1);
+
+  useEffect(() => { setPage(1); }, [search, tagFilter]);
 
   const { data } = useQuery(GET_ALL_VIDEOS, {
     variables: {
@@ -112,12 +149,13 @@ const VideoSelector: React.FC<{
       tagName: tagFilter || undefined,
       sortBy: 'VIEW_COUNT',
       sortOrder: 'DESC',
-      page: 1,
-      limit: 20,
+      page,
+      limit: VIDEO_LIMIT,
     },
   });
   const videos: VideoModel[] = data?.getAllVideos ?? [];
   const selectedIds = selectedVideos.map(v => v.id);
+  const hasNext = videos.length >= VIDEO_LIMIT;
 
   return (
     <div>
@@ -172,6 +210,12 @@ const VideoSelector: React.FC<{
           })
         )}
       </div>
+      <VideoPagination
+        page={page}
+        hasNext={hasNext}
+        onPrev={() => setPage(p => Math.max(1, p - 1))}
+        onNext={() => setPage(p => p + 1)}
+      />
     </div>
   );
 };
@@ -189,13 +233,24 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
   const [selectedVideos, setSelectedVideos] = useState<VideoModel[]>([]);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [searchTagFilter, setSearchTagFilter] = useState('');
+  const [videoPage, setVideoPage] = useState(1);
   const playlist: PlaylistModel | undefined = data?.getPlaylistById;
 
+  useEffect(() => { setVideoPage(1); }, [searchKeyword, searchTagFilter]);
+
   const { data: videoData } = useQuery(GET_ALL_VIDEOS, {
-    variables: { keyword: searchKeyword || undefined, tagName: searchTagFilter || undefined, sortBy: 'VIEW_COUNT', sortOrder: 'DESC', page: 1, limit: 20 },
+    variables: {
+      keyword: searchKeyword || undefined,
+      tagName: searchTagFilter || undefined,
+      sortBy: 'VIEW_COUNT',
+      sortOrder: 'DESC',
+      page: videoPage,
+      limit: VIDEO_LIMIT,
+    },
     skip: !showAddVideo,
   });
   const searchVideos: VideoModel[] = videoData?.getAllVideos ?? [];
+  const hasNext = searchVideos.length >= VIDEO_LIMIT;
 
   const handleVideoClick = (videoId: string, e: React.MouseEvent) => {
     fetchVideoById({ variables: { id: videoId } });
@@ -205,7 +260,12 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
     if (selectedVideos.length === 0) return;
     try {
       await Promise.all(selectedVideos.map(v => addVideoMutation({ variables: { playlistId: id, videoId: v.id } })));
-      setSelectedVideos([]); setShowAddVideo(false); setSearchTagFilter(''); refetch();
+      setSelectedVideos([]);
+      setShowAddVideo(false);
+      setSearchKeyword('');
+      setSearchTagFilter('');
+      setVideoPage(1);
+      refetch();
     } catch { alert('추가 실패'); }
   };
 
@@ -248,7 +308,6 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
           ) : (
             <div className="rounded-xl p-3 sm:p-4" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
               <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-primary)' }}>추가할 영상 선택</p>
-              {/* 검색 입력: 모바일에서 태그 필터를 아래 줄로 */}
               <div className="flex flex-col sm:flex-row gap-2 mb-2">
                 <input type="text" placeholder="영상 검색..." value={searchKeyword} onChange={e => setSearchKeyword(e.target.value)} style={inputStyle} className="flex-1 px-3 py-2 rounded-lg text-sm focus:outline-none" />
                 <input type="text" placeholder="태그 필터" value={searchTagFilter} onChange={e => setSearchTagFilter(e.target.value)} style={inputStyle} className="sm:w-24 px-3 py-2 rounded-lg text-sm focus:outline-none" />
@@ -286,8 +345,28 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
                   );
                 })}
               </div>
+              {/* 페이지네이션 */}
+              <VideoPagination
+                page={videoPage}
+                hasNext={hasNext}
+                onPrev={() => setVideoPage(p => Math.max(1, p - 1))}
+                onNext={() => setVideoPage(p => p + 1)}
+              />
               <div className="flex justify-end gap-2 mt-3">
-                <button type="button" onClick={() => { setShowAddVideo(false); setSelectedVideos([]); setSearchTagFilter(''); }} className="px-4 py-2 text-sm hover:opacity-70 transition-opacity" style={{ color: 'var(--text-muted)' }}>취소</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddVideo(false);
+                    setSelectedVideos([]);
+                    setSearchKeyword('');
+                    setSearchTagFilter('');
+                    setVideoPage(1);
+                  }}
+                  className="px-4 py-2 text-sm hover:opacity-70 transition-opacity"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  취소
+                </button>
                 <button type="button" onClick={handleAddVideo} disabled={selectedVideos.length === 0} style={btnPrimary} className="px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-40 hover:opacity-80 transition-opacity">
                   추가 {selectedVideos.length > 0 && `(${selectedVideos.length})`}
                 </button>
