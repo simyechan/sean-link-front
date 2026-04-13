@@ -9,6 +9,7 @@ import { PlaylistsPage } from './pages/PlaylistsPage';
 import { LoginPage } from './pages/LoginPage';
 import { TagsPage } from './pages/TagsPage';
 import { ReportPage } from './pages/ReportPage';
+import { MmrPage } from './pages/MmrPage';
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <>
@@ -39,6 +40,10 @@ export default function App() {
             <Route
               path="/report"
               element={<AppLayout><ReportPage /></AppLayout>}
+            />
+            <Route 
+              path="/mmr" 
+              element={<AppLayout><MmrPage /></AppLayout>} 
             />
             <Route path="/login" element={<LoginPage />} />
           </Routes>
