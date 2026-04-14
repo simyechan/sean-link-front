@@ -2,13 +2,14 @@ import React, { useState, useCallback } from 'react';
 
 // ── 타입 ──────────────────────────────────────────────────────────────────────
 
-type StatKey = 'rank' | 'win' | 'top3' | 'kill' | 'dmg';
+type StatKey = 'rank' | 'win' | 'top3' | 'kill' | 'assist' | 'dmg';
 
 interface StatScores {
   rank: number;
   win: number;
   top3: number;
   kill: number;
+  assist: number;
   dmg: number;
 }
 
@@ -29,20 +30,21 @@ const TIER_COLORS = [
 
 // 스쿼드 8팀 기준 — 랜덤 1위 확률 12.5%, TOP3 37.5%
 const BENCHMARKS: Record<StatKey, number[]> = {
-  rank:  [7.0, 6.2, 5.5, 4.8, 4.0, 3.2, 2.5, 1.8, 1.5, 1.2],
-  win:   [8, 11, 14, 17, 21, 26, 33, 43, 55, 70],
-  top3:  [28, 33, 38, 43, 50, 57, 65, 76, 85, 95],
-  kill:  [0.5, 0.8, 1.1, 1.5, 1.9, 2.4, 3.0, 3.8, 4.5, 5.5],
-  dmg:   [2000,3000,4200,5500,6800,8200,10000,12500,15000,18000],
+  rank:   [7.0, 6.2, 5.5, 4.8, 4.0, 3.2, 2.5, 1.8, 1.5, 1.2],
+  win:    [8, 11, 14, 17, 21, 26, 33, 43, 55, 70],
+  top3:   [28, 33, 38, 43, 50, 57, 65, 76, 85, 95],
+  kill:   [0.5, 0.8, 1.1, 1.5, 1.9, 2.4, 3.0, 3.8, 4.5, 5.5],
+  assist: [1.0, 1.5, 2.0, 2.8, 3.5, 4.5, 5.5, 7.0, 8.5, 10.0],
+  dmg:    [2000,3000,4200,5500,6800,8200,10000,12500,15000,18000],
 };
 
-// TK 제거 후 재조정: rank 30%, win 27%, top3 22%, kill 11%, dmg 10%
+// rank 30%, win 27%, top3 22%, kill 8%, assist 3%, dmg 10%
 const WEIGHTS: Record<StatKey, number> = {
-  rank: 0.30, win: 0.27, top3: 0.22, kill: 0.11, dmg: 0.10,
+  rank: 0.30, win: 0.27, top3: 0.22, kill: 0.08, assist: 0.03, dmg: 0.10,
 };
 
 const STAT_LABELS: Record<StatKey, string> = {
-  rank: '순위 관리', win: '승률', top3: 'TOP3 생존', kill: '킬', dmg: '딜량',
+  rank: '순위 관리', win: '승률', top3: 'TOP3 생존', kill: '킬', assist: '어시스트', dmg: '딜량',
 };
 
 const STAT_CONFIG: {
@@ -55,11 +57,12 @@ const STAT_CONFIG: {
   note: string;
   format: (v: number) => string;
 }[] = [
-  { key: 'rank', label: '평균 순위',   min: 1, max: 8,     step: 0.1,  defaultValue: 1, note: '스쿼드는 7~8팀 경쟁 — 중간값은 약 #4', format: v => `#${v.toFixed(1)}` },
-  { key: 'win',  label: '승률 (1위%)', min: 0, max: 70,    step: 0.5,  defaultValue: 0, note: '8팀 기준 랜덤이면 약 12.5%', format: v => `${v.toFixed(1)}%` },
-  { key: 'top3', label: 'TOP 3 %',    min: 0, max: 100,   step: 0.5,  defaultValue: 0, note: '8팀 기준 랜덤이면 약 37.5%', format: v => `${v.toFixed(1)}%` },
-  { key: 'kill', label: '평균 킬',    min: 0, max: 10,    step: 0.05, defaultValue: 0, note: '팀원 포함 총 킬 중 본인 몫', format: v => v.toFixed(2) },
-  { key: 'dmg',  label: '평균 딜량',  min: 0, max: 20000, step: 50,   defaultValue: 0, note: '', format: v => Math.round(v).toLocaleString() },
+  { key: 'rank',   label: '평균 순위',      min: 1, max: 8,     step: 0.1,  defaultValue: 1, note: '스쿼드는 7~8팀 경쟁 — 중간값은 약 #4', format: v => `#${v.toFixed(1)}` },
+  { key: 'win',    label: '승률 (1위%)',    min: 0, max: 70,    step: 0.5,  defaultValue: 0, note: '8팀 기준 랜덤이면 약 12.5%', format: v => `${v.toFixed(1)}%` },
+  { key: 'top3',   label: 'TOP 3 %',       min: 0, max: 100,   step: 0.5,  defaultValue: 0, note: '8팀 기준 랜덤이면 약 37.5%', format: v => `${v.toFixed(1)}%` },
+  { key: 'kill',   label: '평균 킬',        min: 0, max: 10,    step: 0.05, defaultValue: 0, note: '팀원 포함 총 킬 중 본인 몫', format: v => v.toFixed(2) },
+  { key: 'assist', label: '평균 어시스트',  min: 0, max: 15,    step: 0.05, defaultValue: 0, note: '', format: v => v.toFixed(2) },
+  { key: 'dmg',    label: '평균 딜량',      min: 0, max: 20000, step: 50,   defaultValue: 0, note: '', format: v => Math.round(v).toLocaleString() },
 ];
 
 // ── 계산 로직 ─────────────────────────────────────────────────────────────────
@@ -169,11 +172,12 @@ const StatSlider: React.FC<{
 
 const RadarChart: React.FC<{ scores: StatScores }> = ({ scores }) => {
   const labels: { key: StatKey; label: string }[] = [
-    { key: 'rank', label: '순위' },
-    { key: 'win',  label: '승률' },
-    { key: 'top3', label: 'TOP3' },
-    { key: 'kill', label: '킬' },
-    { key: 'dmg',  label: '딜량' },
+    { key: 'rank',   label: '순위' },
+    { key: 'win',    label: '승률' },
+    { key: 'top3',   label: 'TOP3' },
+    { key: 'kill',   label: '킬' },
+    { key: 'assist', label: '어시' },
+    { key: 'dmg',    label: '딜량' },
   ];
   const cx = 120, cy = 120, r = 90, n = labels.length;
   const levels = [1, 2, 3, 4, 5, 6, 7, 8, 9];
