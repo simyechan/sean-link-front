@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 const inputStyle: React.CSSProperties = { backgroundColor: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
 const btnPrimary: React.CSSProperties = { backgroundColor: 'var(--accent)', color: '#1a1a1a' };
 const btnSecondary: React.CSSProperties = { backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' };
+const MY_EMAIL = 'racan0101@naver.com';
 
 const formatDate = (dateStr: string) =>
   new Date(dateStr).toLocaleDateString('ko-KR', {
@@ -79,8 +80,25 @@ export const ReportPage: React.FC = () => {
           </p>
         </div>
 
+        <div  className="mb-6">
+          <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
+            비밀 문의 접수 이메일
+          </label>
+
+          <div
+            className="w-full px-3 py-2 rounded-lg text-sm"
+            style={{
+              backgroundColor: 'var(--bg-input)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-primary)',
+            }}
+          >
+            {MY_EMAIL}
+          </div>
+        </div>
+
         {/* ── 필터 탭: 균등 분배 ── */}
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-2 mb-4 mt-3">
           {[
             { label: '전체', value: undefined },
             { label: '미처리', value: false },
