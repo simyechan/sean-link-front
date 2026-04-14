@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { io } from 'socket.io-client';
 
 // ── 스타일 상수 ───────────────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
@@ -128,6 +129,9 @@ export const RoulettePage: React.FC = () => {
   const [showWinner, setShowWinner] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
 
+  const [donationEnabled, setDonationEnabled] = useState(false);
+  const [donationWeightUnit, setDonationWeightUnit] = useState(1000);
+
   const dragIdx = useRef<number | null>(null);
   const dragOverIdx = useRef<number | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -137,6 +141,48 @@ export const RoulettePage: React.FC = () => {
   const totalWeight = items.reduce((s, i) => s + i.weight, 0);
   const getPercent = (w: number) =>
     totalWeight === 0 ? '0%' : `${((w / totalWeight) * 100).toFixed(2)}%`;
+
+  const socketRef = useRef<any>(null);
+
+  useEffect(() => {
+    console.log('REACT_APP_BACKEND_URL:', process.env.REACT_APP_BACKEND_URL);
+    const socket = io(process.env.REACT_APP_BACKEND_URL);
+    socketRef.current = socket; // ← 추가
+
+    const params = new URLSearchParams(window.location.search);
+    const rouletteId = params.get('channelId') ?? '';
+    const donation = params.get('donation') === 'true';
+    if (donation) {
+      setDonationEnabled(true);
+    }
+
+    if (!rouletteId) {
+      console.warn('channelId 없음');
+      return;
+    }
+
+
+    socket.emit('join', { rouletteId, donationEnabled, donationWeightUnit });
+    socket.on('roulette:update', (data) => setItems(data.items));
+
+    return () => {
+      socket.off('roulette:update');
+      socket.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!socketRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const rouletteId = params.get('channelId') ?? '';
+
+    socketRef.current.emit('settings:update', {
+      rouletteId,
+      donationEnabled,
+      donationWeightUnit,
+    });
+  }, [donationEnabled, donationWeightUnit]);
+
 
   // 로컬스토리지 저장
   useEffect(() => {
@@ -273,6 +319,19 @@ export const RoulettePage: React.FC = () => {
     setShowWinner(false);
   };
 
+  const handleToggleDonation = () => {
+    const BACKEND_URL = process.env.REACT_APP_BACKEND_URL!;
+
+    if (!donationEnabled) {
+      // OFF → ON (여기서 추가 권한 요청)
+      window.location.replace(`${BACKEND_URL}/auth/login?scope=donation`);
+      return;
+    }
+
+    // ON → OFF
+    setDonationEnabled(false);
+  };
+
   // ── Setup View ─────────────────────────────────────────────────────────────
   if (view === 'setup') {
     return (
@@ -396,6 +455,67 @@ export const RoulettePage: React.FC = () => {
           >
             항목 추가
           </button>
+
+          {/* 후원 설정 */}
+          <div className="mb-8 p-4 rounded-xl" style={{ backgroundColor: 'var(--bg-card)' }}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                후원 반영
+              </span>
+              <button
+                onClick={handleToggleDonation}
+                style={donationEnabled ? btnPrimary : btnOutline}
+                className="px-4 py-1.5 rounded-lg text-sm font-bold"
+              >
+                {donationEnabled ? 'ON' : 'OFF'}
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                1000치즈당 가중치
+              </span>
+              <input
+                type="number"
+                min={100}
+                step={100}
+                value={donationWeightUnit}
+                onChange={(e) => setDonationWeightUnit(Number(e.target.value))}
+                className="w-24 px-2 py-1 rounded-lg text-sm"
+                style={inputStyle}
+              />
+            </div>
+
+            {/* 후원 메시지 예시 추가 */}
+            <div className="mt-3 p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-base)' }}>
+              <p className="text-xs font-bold mb-2" style={{ color: 'var(--text-secondary)' }}>
+                💬 후원 메시지 예시
+              </p>
+              <div className="space-y-1">
+                {items.filter(i => i.name.trim()).slice(0, 3).map(item => (
+                  <div key={item.id} className="flex items-center gap-2">
+                    <span
+                      className="text-xs px-2 py-0.5 rounded font-mono"
+                      style={{ backgroundColor: 'var(--bg-card)', color: 'var(--accent)' }}
+                    >
+                      룰렛 {item.name}
+                    </span>
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      → {item.name} 항목 가중치 +{Math.floor(1000 / donationWeightUnit) || 1}
+                    </span>
+                  </div>
+                ))}
+                {items.filter(i => i.name.trim()).length === 0 && (
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    항목을 추가하면 예시가 표시돼요
+                  </p>
+                )}
+              </div>
+              <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+                치지직 후원 메시지를 <span style={{ color: 'var(--accent)' }}>"룰렛 [항목명]"</span> 형식으로 보내주세요
+              </p>
+            </div>
+          </div>
 
           {/* 속도 선택 */}
           <div className="flex items-center justify-center gap-3 mb-8">
