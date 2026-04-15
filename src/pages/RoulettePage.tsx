@@ -29,6 +29,11 @@ interface RouletteItem {
 
 type SpeedOption = 'slow' | 'normal' | 'fast';
 
+type DonationRule = {
+  unit: number;
+  votes: number;
+};
+
 const SPEED_DURATION: Record<SpeedOption, number> = {
   slow: 7000,
   normal: 4500,
@@ -136,13 +141,17 @@ export const RoulettePage: React.FC = () => {
       return false;
     }
   });
-  const [donationWeightUnit, setDonationWeightUnit] = useState(() => {
-    return Number(localStorage.getItem('donation_unit') || 1000);
+  const [donationRules, setDonationRules] = useState<DonationRule[]>(() => {
+    try {
+      const saved = localStorage.getItem('donation_rules');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [{ unit: 1000, votes: 1 }];
   });
 
   useEffect(() => {
-    localStorage.setItem('donation_unit', String(donationWeightUnit));
-  }, [donationWeightUnit]);
+    localStorage.setItem('donation_rules', JSON.stringify(donationRules));
+  }, [donationRules]);
 
   const dragIdx = useRef<number | null>(null);
   const dragOverIdx = useRef<number | null>(null);
@@ -220,9 +229,9 @@ export const RoulettePage: React.FC = () => {
     socketRef.current.emit('settings:update', {
       rouletteId,
       donationEnabled,
-      donationWeightUnit,
+      donationRules,
     });
-  }, [donationEnabled, donationWeightUnit]);
+  }, [donationEnabled, donationRules]);
 
   // 로컬스토리지 저장
   useEffect(() => {
@@ -502,19 +511,65 @@ export const RoulettePage: React.FC = () => {
                 {donationEnabled ? 'ON' : 'OFF'}
               </button>
             </div>
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                1000치즈당 표
-              </span>
-              <input
-                type="number"
-                min={1}
-                step={1}
-                value={donationWeightUnit}
-                onChange={(e) => setDonationWeightUnit(Number(e.target.value))}
-                className="w-24 px-2 py-1 rounded-lg text-sm"
-                style={inputStyle}
-              />
+            <div className="space-y-2 mb-3">
+              {donationRules.map((rule, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    value={rule.unit}
+                    onChange={(e) => {
+                      const next = [...donationRules];
+                      next[idx].unit = Number(e.target.value);
+                      setDonationRules(next);
+                    }}
+                    className="w-20 px-2 py-1 rounded-lg text-sm"
+                    style={inputStyle}
+                  />
+
+                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    치즈당
+                  </span>
+
+                  <input
+                    type="number"
+                    min={1}
+                    value={rule.votes}
+                    onChange={(e) => {
+                      const next = [...donationRules];
+                      next[idx].votes = Number(e.target.value);
+                      setDonationRules(next);
+                    }}
+                    className="w-16 px-2 py-1 rounded-lg text-sm"
+                    style={inputStyle}
+                  />
+
+                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    표
+                  </span>
+
+                  <button
+                    onClick={() => {
+                      setDonationRules(donationRules.filter((_, i) => i !== idx));
+                    }}
+                    className="text-xs px-2"
+                    style={{ color: '#ff8a8a' }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+
+              {/* ✅ 이게 너가 찾던 버튼 */}
+              <button
+                onClick={() => {
+                  setDonationRules([...donationRules, { unit: 1000, votes: 1 }]);
+                }}
+                className="text-xs px-2 py-1 rounded"
+                style={btnOutline}
+              >
+                + 규칙 추가
+              </button>
             </div>
             <div className="mt-3 p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-base)' }}>
               <p className="text-xs font-bold mb-2" style={{ color: 'var(--text-secondary)' }}>
@@ -530,7 +585,7 @@ export const RoulettePage: React.FC = () => {
                       룰렛 {item.name}
                     </span>
                     <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                      → {item.name} 표 +{donationWeightUnit || 1}
+                      → {item.name} 표 +{donationRules.map(r => `${r.votes}/${r.unit}`).join(', ')}
                     </span>
                   </div>
                 ))}
