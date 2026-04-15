@@ -39,6 +39,13 @@ const DEFAULT_COLORS = [
   '#f59e0b', '#ef4444', '#10b981', '#6366f1',
 ];
 
+// ── 팔레트 색상 18개 ───────────────────────────────────────────────────────
+const PALETTE_COLORS = [
+  '#2dd4a0', '#22c0e8', '#3b82f6', '#6366f1', '#8b5cf6', '#ec4899',
+  '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#10b981',
+  '#14b8a6', '#06b6d4', '#a78bfa', '#fb923c', '#f43f5e', '#64748b',
+];
+
 const LS_KEY = 'roulette_items_v1';
 
 const makeItem = (idx: number): RouletteItem => ({
@@ -47,6 +54,58 @@ const makeItem = (idx: number): RouletteItem => ({
   weight: 1,
   color: DEFAULT_COLORS[idx % DEFAULT_COLORS.length],
 });
+
+// ── 팔레트 컬러 피커 컴포넌트 ─────────────────────────────────────────────
+const ColorPicker: React.FC<{
+  value: string;
+  onChange: (color: string) => void;
+}> = ({ value, onChange }) => {
+  const [custom, setCustom] = useState(value);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* 팔레트 */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, width: 152 }}>
+        {PALETTE_COLORS.map(c => (
+          <button
+            key={c}
+            onClick={() => onChange(c)}
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: 5,
+              background: c,
+              border: c === value ? '2px solid #fff' : '2px solid transparent',
+            }}
+          />
+        ))}
+      </div>
+
+      {/* 커스텀 RGB */}
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <input
+          type="color"
+          value={custom}
+          onChange={(e) => {
+            setCustom(e.target.value);
+            onChange(e.target.value);
+          }}
+          style={{
+            width: 32,
+            height: 32,
+            border: 'none',
+            background: 'transparent',
+            cursor: 'pointer',
+          }}
+        />
+
+        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+          custom
+        </span>
+      </div>
+    </div>
+  );
+};
 
 // ── 캔버스 그리기 ─────────────────────────────────────────────────────────
 function drawWheel(canvas: HTMLCanvasElement, items: RouletteItem[], rotation: number) {
@@ -149,6 +208,15 @@ export const RoulettePage: React.FC = () => {
     if (!canvas) return;
     drawWheel(canvas, view === 'spin' ? spinItems : items, rotationRef.current);
   }, [items, spinItems, view]);
+
+  // 팔레트 팝오버 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (focusId?.startsWith('color-')) setFocusId(null);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [focusId]);
 
   // ── 설정 핸들러 ──────────────────────────────────────────────────────────
   const handleAdd = () =>
@@ -254,7 +322,6 @@ export const RoulettePage: React.FC = () => {
   const getSuggestions = (query: string, excludeId: string) => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-
     return items
       .filter(i => i.id !== excludeId && i.name.toLowerCase().includes(q))
       .slice(0, 5);
@@ -313,15 +380,45 @@ export const RoulettePage: React.FC = () => {
                   항목 {idx + 1}
                 </span>
 
-                {/* 색상 선택 */}
-                <input
-                  type="color"
-                  value={item.color}
-                  onChange={e => handleColorChange(item.id, e.target.value)}
-                  className="flex-shrink-0 w-8 h-8 rounded cursor-pointer border-0 p-0.5"
-                  style={{ backgroundColor: 'var(--bg-input)', border: '1px solid var(--border)' }}
-                  title="색상 선택"
-                />
+                {/* 색상 선택 — 팔레트 팝오버 */}
+                <div
+                  className="relative flex-shrink-0"
+                  onMouseDown={e => e.stopPropagation()}
+                >
+                  <button
+                    onClick={() =>
+                      setFocusId(focusId === `color-${item.id}` ? null : `color-${item.id}`)
+                    }
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 6,
+                      background: item.color,
+                      border: '1px solid var(--border)',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                    }}
+                    title="색상 선택"
+                  />
+                  {focusId === `color-${item.id}` && (
+                    <div
+                      className="absolute z-30 mt-1 p-2 rounded-xl shadow-lg"
+                      style={{
+                        backgroundColor: 'var(--bg-card)',
+                        border: '1px solid var(--border)',
+                        left: 0,
+                      }}
+                    >
+                      <ColorPicker
+                        value={item.color}
+                        onChange={c => {
+                          handleColorChange(item.id, c);
+                          setFocusId(null);
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
 
                 {/* 이름 입력 */}
                 <div className="flex-1 min-w-0 relative">
