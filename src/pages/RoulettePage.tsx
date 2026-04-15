@@ -504,12 +504,12 @@ export const RoulettePage: React.FC = () => {
             </div>
             <div className="flex items-center gap-3 mb-3">
               <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                1000치즈당 가중치
+                1000치즈당 표
               </span>
               <input
                 type="number"
-                min={100}
-                step={100}
+                min={1}
+                step={1}
                 value={donationWeightUnit}
                 onChange={(e) => setDonationWeightUnit(Number(e.target.value))}
                 className="w-24 px-2 py-1 rounded-lg text-sm"
