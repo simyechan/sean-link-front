@@ -452,7 +452,7 @@ export const RoulettePage: React.FC = () => {
 
     if (!donationEnabled) {
       setDonationEnabled(true);
-      window.location.replace(`${BACKEND_URL}/auth/login?scope=donation`);
+      window.location.replace(`${BACKEND_URL}/api/auth/login?scope=donation`);
       return;
     }
 
