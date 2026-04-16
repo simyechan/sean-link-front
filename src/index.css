@@ -42,10 +42,7 @@ body {
 }
 
 .link-hover:hover {
-  transform: scale(1.03);
-  background-color: var(--bg-input);
-  border-color: var(--accent);
-  box-shadow: 0 0 10px rgba(255, 242, 146, 0.2);
+  transform: scale(1.05);
 }
 
 .link-hover:active {

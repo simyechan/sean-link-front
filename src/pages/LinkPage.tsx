@@ -17,14 +17,23 @@ export default function LinkPage() {
     { id: 4, name: "치지직", url: "https://chzzk.naver.com/93f06c016e073c01b6bdb4098a99b1a7" },
     { id: 5, name: "팬카페", url: "https://cafe.naver.com/kisean" },
     { id: 6, name: "팬심", url: "https://fancim.me/celeb/profile.aspx?url=122554" },
+    { id: 7, name: "니케 솔로레이드 덱 도우미(문제시 삭제)", url: "https://nikkesoloraid.vercel.app" },
   ]);
 
   const getColorByUrl = (url: string) => {
-    if (url.includes("youtube")) return "#FF0000";
     if (url.includes("chzzk")) return "#00FFA3";
+    if (url.includes("youtube")) return "#FF0000";
     if (url.includes("naver")) return "#03C75A";
     if (url.includes("fancim")) return "#ff7aa2";
     return "var(--bg-card)";
+  };
+
+  const getDomain = (url: string) => {
+    try {
+        return new URL(url).hostname;
+    } catch {
+        return url;
+    }
   };
 
   const [newName, setNewName] = useState("");
@@ -61,12 +70,19 @@ export default function LinkPage() {
                 style={{
                     ...styles.link,
                     borderColor: getColorByUrl(link.url),
+                    boxShadow: `0 0 0px ${getColorByUrl(link.url)}`,
+                }}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow = `0 0 12px ${getColorByUrl(link.url)}`;
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.boxShadow = `0 0 0px ${getColorByUrl(link.url)}`;
                 }}
             >
                 <img
-                src={`https://www.google.com/s2/favicons?domain=${link.url}`}
-                alt="icon"
-                style={styles.icon}
+                    src={`https://www.google.com/s2/favicons?domain=${link.url}`}
+                    alt="icon"
+                    style={styles.icon}
                 />
                 {link.name}
             </a>
