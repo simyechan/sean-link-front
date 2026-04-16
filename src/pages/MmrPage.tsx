@@ -80,7 +80,7 @@ const STAT_CONFIG: {
   { key: 'top3',   label: 'TOP 3 %',       min: 0, max: 100,   step: 0.5,  defaultValue: 32, note: '8팀 기준 랜덤이면 약 37.5%', format: v => `${v.toFixed(1)}%` },
   { key: 'kill',   label: '평균 킬',        min: 0, max: 10,    step: 0.05, defaultValue: 1.0, note: '팀원 포함 총 킬 중 본인 몫', format: v => v.toFixed(2) },
   { key: 'assist', label: '평균 어시스트',  min: 0, max: 15,    step: 0.05, defaultValue: 1.8, note: '', format: v => v.toFixed(2) },
-  { key: 'dmg',    label: '평균 딜량',      min: 0, max: 20000, step: 50,   defaultValue: 3200, note: '', format: v => Math.round(v).toLocaleString() },
+  { key: 'dmg',    label: '평균 딜량',      min: 0, max: 30000, step: 50,   defaultValue: 3200, note: '', format: v => Math.round(v).toLocaleString() },
 ];
 
 const STORAGE_KEY = 'season_tier_distribution';
