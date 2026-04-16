@@ -243,7 +243,7 @@ export const RoulettePage: React.FC = () => {
   }, [donationEnabled]);
 
   useEffect(() => {
-    const socket = io(process.env.REACT_APP_BACKEND_URL!);
+    const socket = io();
     socketRef.current = socket;
 
     const params = new URLSearchParams(window.location.search);
@@ -446,13 +446,10 @@ export const RoulettePage: React.FC = () => {
   };
 
   const handleToggleDonation = () => {
-    const BACKEND_URL = process.env.REACT_APP_BACKEND_URL!;
-    
-    console.log(process.env.REACT_APP_BACKEND_URL);
 
     if (!donationEnabled) {
       setDonationEnabled(true);
-      window.location.replace(`${BACKEND_URL}/api/auth/login?scope=donation`);
+      window.location.replace(`/api/auth/login?scope=donation`);
       return;
     }
 
