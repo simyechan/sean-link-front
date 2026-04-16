@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { io } from 'socket.io-client';
 
 // ── 스타일 상수 ───────────────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
@@ -27,6 +28,11 @@ interface RouletteItem {
 }
 
 type SpeedOption = 'slow' | 'normal' | 'fast';
+
+type DonationRule = {
+  unit: number;
+  votes: number;
+};
 
 const SPEED_DURATION: Record<SpeedOption, number> = {
   slow: 7000,
@@ -187,15 +193,104 @@ export const RoulettePage: React.FC = () => {
   const [showWinner, setShowWinner] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
 
+  const [donationEnabled, setDonationEnabled] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('donation_enabled') || 'false');
+    } catch {
+      return false;
+    }
+  });
+  const [donationRules, setDonationRules] = useState<DonationRule[]>(() => {
+    try {
+      const saved = localStorage.getItem('donation_rules');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [{ unit: 1000, votes: 1 }];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('donation_rules', JSON.stringify(donationRules));
+  }, [donationRules]);
+
   const dragIdx = useRef<number | null>(null);
   const dragOverIdx = useRef<number | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rotationRef = useRef(0);
   const rafRef = useRef<number>(0);
+  const spinItemsRef = useRef<RouletteItem[]>([]);
 
   const totalWeight = items.reduce((s, i) => s + i.weight, 0);
   const getPercent = (w: number) =>
     totalWeight === 0 ? '0%' : `${((w / totalWeight) * 100).toFixed(2)}%`;
+
+  const socketRef = useRef<any>(null);
+
+  const handleUpdate = useCallback((data: any) => {
+    const updated = data.item;
+    setItems(prev => {
+      const idx = prev.findIndex(i => i.id === updated.id);
+      if (idx !== -1) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], ...updated };
+        return next;
+      }
+      return [...prev, updated];
+    });
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('donation_enabled', JSON.stringify(donationEnabled));
+  }, [donationEnabled]);
+
+  useEffect(() => {
+    const socket = io(process.env.REACT_APP_BACKEND_URL!);
+    socketRef.current = socket;
+
+    const params = new URLSearchParams(window.location.search);
+    const rouletteId = params.get('channelId');
+
+    if (!rouletteId) {
+      socket.disconnect();
+      return;
+    }
+
+    socket.emit('join', { rouletteId });
+    socket.on('roulette:item_update', handleUpdate);
+
+    return () => {
+      socket.off('roulette:item_update', handleUpdate);
+      socket.disconnect();
+    };
+  }, [handleUpdate]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const donation = params.get('donation');
+
+    if (donation === 'success') {
+      setDonationEnabled(true);
+
+      // ✅ URL에서 파라미터 제거
+      params.delete('donation');
+      const newUrl =
+        window.location.pathname +
+        (params.toString() ? `?${params.toString()}` : '');
+
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!socketRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const rouletteId = params.get('channelId') ?? '';
+
+    socketRef.current.emit('settings:update', {
+      rouletteId,
+      donationEnabled,
+      donationRules,
+    });
+  }, [donationEnabled, donationRules]);
 
   // 로컬스토리지 저장
   useEffect(() => {
@@ -261,9 +356,12 @@ export const RoulettePage: React.FC = () => {
 
   // ── 룰렛 시작 ─────────────────────────────────────────────────────────────
   const handleStart = () => {
-    const valid = items.filter(i => i.name.trim());
+    const valid = items
+      .map(i => ({ ...i, name: i.name.trim() }))
+      .filter(i => i.name.length > 0);
     if (valid.length < 2) return;
     setSpinItems(valid);
+    spinItemsRef.current = valid;
     setView('spin');
     setWinner(null);
     setShowWinner(false);
@@ -272,14 +370,18 @@ export const RoulettePage: React.FC = () => {
   // ── 룰렛 돌리기 ───────────────────────────────────────────────────────────
   const handleSpin = useCallback(() => {
     if (spinning) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
+
+    const spinItemsLocal = spinItemsRef.current;
+    if (spinItemsLocal.length < 2) return;
 
     setSpinning(true);
     setShowWinner(false);
     setWinner(null);
 
-    const totalW = spinItems.reduce((s, i) => s + i.weight, 0);
+    const totalW = spinItemsLocal.reduce((s, i) => s + i.weight, 0);
     const extraSpins = (5 + Math.floor(Math.random() * 5)) * 2 * Math.PI;
     const targetAngle = Math.random() * 2 * Math.PI;
     const totalRotation = extraSpins + targetAngle;
@@ -288,13 +390,15 @@ export const RoulettePage: React.FC = () => {
     const startRotation = rotationRef.current;
 
     const findWinner = (finalRot: number) => {
-      let pointer = ((-Math.PI / 2 - finalRot) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+      let pointer =
+        ((-Math.PI / 2 - finalRot) % (2 * Math.PI) + 2 * Math.PI) %
+        (2 * Math.PI);
       let cumulative = 0;
-      for (const item of spinItems) {
+      for (const item of spinItemsLocal) {
         cumulative += (item.weight / totalW) * 2 * Math.PI;
         if (pointer < cumulative) return item.name;
       }
-      return spinItems[spinItems.length - 1].name;
+      return spinItemsLocal[spinItemsLocal.length - 1].name;
     };
 
     const easeOut = (t: number) => 1 - Math.pow(1 - t, 4);
@@ -303,7 +407,7 @@ export const RoulettePage: React.FC = () => {
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1);
       rotationRef.current = startRotation + totalRotation * easeOut(progress);
-      drawWheel(canvas, spinItems, rotationRef.current);
+      drawWheel(canvas, spinItemsLocal, rotationRef.current);
 
       if (progress < 1) {
         rafRef.current = requestAnimationFrame(animate);
@@ -317,7 +421,7 @@ export const RoulettePage: React.FC = () => {
     };
 
     rafRef.current = requestAnimationFrame(animate);
-  }, [spinning, spinItems, speed]);
+  }, [spinning, speed]);
 
   const getSuggestions = (query: string, excludeId: string) => {
     const q = query.trim().toLowerCase();
@@ -336,8 +440,21 @@ export const RoulettePage: React.FC = () => {
       return;
     }
     setSpinItems(next);
+    spinItemsRef.current = next;
     setWinner(null);
     setShowWinner(false);
+  };
+
+  const handleToggleDonation = () => {
+    const BACKEND_URL = process.env.REACT_APP_BACKEND_URL!;
+
+    if (!donationEnabled) {
+      setDonationEnabled(true);
+      window.location.replace(`${BACKEND_URL}/auth/login?scope=donation`);
+      return;
+    }
+
+    setDonationEnabled(false);
   };
 
   // ── Setup View ─────────────────────────────────────────────────────────────
@@ -370,16 +487,12 @@ export const RoulettePage: React.FC = () => {
                 className="flex items-center gap-2 rounded-xl px-3 py-2 transition-colors"
                 style={{ backgroundColor: 'var(--bg-card)', cursor: 'grab' }}
               >
-                {/* 드래그 핸들 */}
                 <span className="flex-shrink-0 select-none text-lg" style={{ color: 'var(--text-muted)' }}>
                   ⠿
                 </span>
-
-                {/* 항목 번호 */}
                 <span className="text-sm font-bold flex-shrink-0 w-12 text-right" style={{ color: 'var(--text-primary)' }}>
                   항목 {idx + 1}
                 </span>
-
                 {/* 색상 선택 — 팔레트 팝오버 */}
                 <div
                   className="relative flex-shrink-0"
@@ -432,7 +545,6 @@ export const RoulettePage: React.FC = () => {
                     style={inputStyle}
                     className="w-full px-3 py-2 rounded-lg text-sm placeholder-gray-500 focus:outline-none"
                   />
-
                   {focusId === item.id && item.name.trim() && (
                     <div
                       className="absolute z-20 mt-1 w-full rounded-lg overflow-hidden shadow-lg"
@@ -457,23 +569,15 @@ export const RoulettePage: React.FC = () => {
                     </div>
                   )}
                 </div>
-
-                {/* 가중치 */}
                 <input
-                  type="number"
-                  min={1}
                   value={item.weight}
                   onChange={e => handleWeightChange(item.id, e.target.value)}
                   style={inputStyle}
                   className="w-14 px-2 py-2 rounded-lg text-sm text-center focus:outline-none flex-shrink-0"
                 />
-
-                {/* 퍼센트 */}
                 <span className="text-xs flex-shrink-0 w-14 text-right" style={{ color: 'var(--text-secondary)' }}>
                   {getPercent(item.weight)}
                 </span>
-
-                {/* 삭제 */}
                 <button
                   onClick={() => handleDelete(item.id)}
                   className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded hover:opacity-70 transition-opacity text-sm"
@@ -493,6 +597,110 @@ export const RoulettePage: React.FC = () => {
           >
             항목 추가
           </button>
+
+          {/* 후원 설정 */}
+          <div className="mb-8 p-4 rounded-xl" style={{ backgroundColor: 'var(--bg-card)' }}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                후원 반영
+              </span>
+              <button
+                onClick={handleToggleDonation}
+                style={donationEnabled ? btnPrimary : btnOutline}
+                className="px-4 py-1.5 rounded-lg text-sm font-bold"
+              >
+                {donationEnabled ? 'ON' : 'OFF'}
+              </button>
+            </div>
+            <div className="space-y-2 mb-3">
+              {donationRules.map((rule, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    value={rule.unit}
+                    onChange={(e) => {
+                      const next = [...donationRules];
+                      next[idx].unit = Number(e.target.value);
+                      setDonationRules(next);
+                    }}
+                    className="w-20 px-2 py-1 rounded-lg text-sm"
+                    style={inputStyle}
+                  />
+
+                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    치즈당
+                  </span>
+
+                  <input
+                    type="number"
+                    min={1}
+                    value={rule.votes}
+                    onChange={(e) => {
+                      const next = [...donationRules];
+                      next[idx].votes = Number(e.target.value);
+                      setDonationRules(next);
+                    }}
+                    className="w-16 px-2 py-1 rounded-lg text-sm"
+                    style={inputStyle}
+                  />
+
+                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    표
+                  </span>
+
+                  <button
+                    onClick={() => {
+                      setDonationRules(donationRules.filter((_, i) => i !== idx));
+                    }}
+                    className="text-xs px-2"
+                    style={{ color: '#ff8a8a' }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+
+              {/* ✅ 이게 너가 찾던 버튼 */}
+              <button
+                onClick={() => {
+                  setDonationRules([...donationRules, { unit: 1000, votes: 1 }]);
+                }}
+                className="text-xs px-2 py-1 rounded"
+                style={btnOutline}
+              >
+                + 규칙 추가
+              </button>
+            </div>
+            <div className="mt-3 p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-base)' }}>
+              <p className="text-xs font-bold mb-2" style={{ color: 'var(--text-secondary)' }}>
+                💬 후원 메시지 예시
+              </p>
+              <div className="space-y-1">
+                {items.filter(i => i.name.trim()).slice(0, 3).map(item => (
+                  <div key={item.id} className="flex items-center gap-2">
+                    <span
+                      className="text-xs px-2 py-0.5 rounded font-mono"
+                      style={{ backgroundColor: 'var(--bg-card)', color: 'var(--accent)' }}
+                    >
+                      룰렛 {item.name}
+                    </span>
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      → {item.name} 표 +{donationRules.map(r => `${r.votes}/${r.unit}`).join(', ')}
+                    </span>
+                  </div>
+                ))}
+                {items.filter(i => i.name.trim()).length === 0 && (
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    항목을 추가하면 예시가 표시돼요
+                  </p>
+                )}
+              </div>
+              <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+                치지직 후원 메시지를 <span style={{ color: 'var(--accent)' }}>"룰렛 [항목명]"</span> 형식으로 보내주세요
+              </p>
+            </div>
+          </div>
 
           {/* 속도 선택 */}
           <div className="flex items-center justify-center gap-3 mb-8">
