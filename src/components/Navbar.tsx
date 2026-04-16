@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { path: '/report', label: '신고/문의' },
   { path: '/roulette', label: '룰렛' },
   { path: '/mmr', label: 'MMR 추정기' },
+  { path: '/links', label: '링크 모음' },
 ];
 
 export const Navbar: React.FC = () => {

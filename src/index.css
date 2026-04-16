@@ -25,3 +25,33 @@ body {
 ::-webkit-scrollbar-track { background: var(--bg-base); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.link-hover {
+  transition: transform 0.2s ease;
+}
+
+.link-hover:hover {
+  transform: scale(1.03);
+  background-color: var(--bg-input);
+  border-color: var(--accent);
+  box-shadow: 0 0 10px rgba(255, 242, 146, 0.2);
+}
+
+.link-hover:active {
+  transform: scale(0.97);
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease;
+}
