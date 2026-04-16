@@ -447,6 +447,8 @@ export const RoulettePage: React.FC = () => {
 
   const handleToggleDonation = () => {
     const BACKEND_URL = process.env.REACT_APP_BACKEND_URL!;
+    
+    console.log(process.env.REACT_APP_BACKEND_URL);
 
     if (!donationEnabled) {
       setDonationEnabled(true);
