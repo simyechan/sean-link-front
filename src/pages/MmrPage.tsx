@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 // ── 타입 ──────────────────────────────────────────────────────────────────────
 
@@ -23,19 +24,36 @@ const TIERS = [
 ] as const;
 
 const TIER_COLORS = [
-  '#cccccc', '#b98665', '#97a7c3', '#e3c56f',
-  '#7abb9b', '#9d7dc6', '#64b9d3', '#4c7aa3',
-  '#7ba0e8', '#b95f81'
+  '#a0a0a0', '#c4845a', '#8fa8c8', '#e8c84a',
+  '#6dba9a', '#a07ed4', '#58b8d8', '#4a8ac0',
+  '#7898f0', '#e05878'
 ];
 
-// 스쿼드 8팀 기준 — 랜덤 1위 확률 12.5%, TOP3 37.5%
+// ── 실제 티어 분포 데이터 (서버 공식 통계 기반) ───────────────────────────────
+const TIER_DISTRIBUTION = [
+  { tier: '아이언',       pct: 12.46, color: '#a0a0a0' },
+  { tier: '브론즈',       pct: 9.39,  color: '#c4845a' },
+  { tier: '실버',         pct: 13.78, color: '#8fa8c8' },
+  { tier: '골드',         pct: 20.83, color: '#e8c84a' },
+  { tier: '플래티넘',     pct: 17.30, color: '#6dba9a' },
+  { tier: '다이아몬드',   pct: 15.98, color: '#a07ed4' },
+  { tier: '메테오라이트', pct: 5.59,  color: '#58b8d8' },
+  { tier: '미스릴',       pct: 4.17,  color: '#4a8ac0' },
+  { tier: '데미갓',       pct: 0.35,  color: '#7898f0' },
+  { tier: '이터니티',     pct: 0.15,  color: '#e05878' },
+];
+
+// ── 재보정된 벤치마크 ─────────────────────────────────────────────────────────
+// 근거: 이터니티 상위 16명 평균 — 승률 약 20%, TOP3 약 48%, 평균순위 #3.8, 킬 4.8
+// 전체 분포: 골드(47%) · 플래티넘(29%) 구간이 중심 → 중간 티어 문턱을 대폭 완화
 const BENCHMARKS: Record<StatKey, number[]> = {
-  rank:   [7.0, 6.2, 5.5, 4.8, 4.0, 3.2, 2.5, 1.8, 1.5, 1.2],
-  win:    [8, 11, 14, 17, 21, 26, 33, 43, 55, 70],
-  top3:   [28, 33, 38, 43, 50, 57, 65, 76, 85, 95],
-  kill:   [0.5, 0.8, 1.1, 1.5, 1.9, 2.4, 3.0, 3.8, 4.5, 5.5],
-  assist: [1.0, 1.5, 2.0, 2.8, 3.5, 4.5, 5.5, 7.0, 8.5, 10.0],
-  dmg:    [2000,3000,4200,5500,6800,8200,10000,12500,15000,18000],
+  //         아이언 브론즈 실버  골드  플레  다이아 메테  미스  데미  이터
+  rank:   [  7.6,  7.0,  6.2,  5.4,  4.5,  3.6,  2.8,  2.0,  1.6,  1.3 ],
+  win:    [  3,    5,    8,    11,   14,   18,   22,   26,   32,   40  ],
+  top3:   [  15,   20,   26,   32,   38,   44,   50,   57,   65,   75  ],
+  kill:   [  0.2,  0.4,  0.7,  1.0,  1.4,  1.9,  2.5,  3.2,  4.0,  4.8 ],
+  assist: [  0.3,  0.7,  1.2,  1.8,  2.5,  3.3,  4.2,  5.5,  7.0,  8.5 ],
+  dmg:    [  800, 1400, 2200, 3200, 4400, 5800, 7400, 9200,11500,14000 ],
 };
 
 // rank 30%, win 27%, top3 22%, kill 8%, assist 3%, dmg 10%
@@ -57,13 +75,27 @@ const STAT_CONFIG: {
   note: string;
   format: (v: number) => string;
 }[] = [
-  { key: 'rank',   label: '평균 순위',      min: 1, max: 8,     step: 0.1,  defaultValue: 1, note: '스쿼드는 7~8팀 경쟁 — 중간값은 약 #4', format: v => `#${v.toFixed(1)}` },
-  { key: 'win',    label: '승률 (1위%)',    min: 0, max: 70,    step: 0.5,  defaultValue: 0, note: '8팀 기준 랜덤이면 약 12.5%', format: v => `${v.toFixed(1)}%` },
-  { key: 'top3',   label: 'TOP 3 %',       min: 0, max: 100,   step: 0.5,  defaultValue: 0, note: '8팀 기준 랜덤이면 약 37.5%', format: v => `${v.toFixed(1)}%` },
-  { key: 'kill',   label: '평균 킬',        min: 0, max: 10,    step: 0.05, defaultValue: 0, note: '팀원 포함 총 킬 중 본인 몫', format: v => v.toFixed(2) },
-  { key: 'assist', label: '평균 어시스트',  min: 0, max: 15,    step: 0.05, defaultValue: 0, note: '', format: v => v.toFixed(2) },
-  { key: 'dmg',    label: '평균 딜량',      min: 0, max: 20000, step: 50,   defaultValue: 0, note: '', format: v => Math.round(v).toLocaleString() },
+  { key: 'rank',   label: '평균 순위',      min: 1, max: 8,     step: 0.1,  defaultValue: 5, note: '스쿼드는 7~8팀 경쟁 — 중간값은 약 #4~5', format: v => `#${v.toFixed(1)}` },
+  { key: 'win',    label: '승률 (1위%)',    min: 0, max: 70,    step: 0.5,  defaultValue: 11, note: '8팀 기준 랜덤이면 약 12.5%', format: v => `${v.toFixed(1)}%` },
+  { key: 'top3',   label: 'TOP 3 %',       min: 0, max: 100,   step: 0.5,  defaultValue: 32, note: '8팀 기준 랜덤이면 약 37.5%', format: v => `${v.toFixed(1)}%` },
+  { key: 'kill',   label: '평균 킬',        min: 0, max: 10,    step: 0.05, defaultValue: 1.0, note: '팀원 포함 총 킬 중 본인 몫', format: v => v.toFixed(2) },
+  { key: 'assist', label: '평균 어시스트',  min: 0, max: 15,    step: 0.05, defaultValue: 1.8, note: '', format: v => v.toFixed(2) },
+  { key: 'dmg',    label: '평균 딜량',      min: 0, max: 20000, step: 50,   defaultValue: 3200, note: '', format: v => Math.round(v).toLocaleString() },
 ];
+
+const STORAGE_KEY = 'season_tier_distribution';
+
+const getInitialTierDist = () => {
+  if (typeof window === 'undefined') return TIER_DISTRIBUTION;
+
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return TIER_DISTRIBUTION;
+    return JSON.parse(saved) as typeof TIER_DISTRIBUTION;
+  } catch {
+    return TIER_DISTRIBUTION;
+  }
+};
 
 // ── 계산 로직 ─────────────────────────────────────────────────────────────────
 
@@ -76,19 +108,36 @@ function scoreStat(key: StatKey, val: number): number {
   return 0;
 }
 
-function calcResult(values: Record<StatKey, number>) {
+function calcResult(
+  values: Record<StatKey, number>,
+  tierDist: typeof TIER_DISTRIBUTION
+) {
   const scores = {} as StatScores;
   let total = 0;
+
   for (const key of Object.keys(WEIGHTS) as StatKey[]) {
     scores[key] = scoreStat(key, values[key]);
     total += scores[key] * WEIGHTS[key];
   }
+
   const maxTier = TIERS.length - 1;
   const tierIdx = Math.min(Math.floor(total), maxTier);
   const mmr = Math.round(800 + total * 400);
-  const maxKey = (Object.keys(scores) as StatKey[]).reduce((a, b) => scores[a] > scores[b] ? a : b);
-  const minKey = (Object.keys(scores) as StatKey[]).reduce((a, b) => scores[a] < scores[b] ? a : b);
-  return { scores, total, tierIdx, mmr, maxKey, minKey };
+
+  const maxKey = (Object.keys(scores) as StatKey[])
+    .reduce((a, b) => (scores[a] > scores[b] ? a : b));
+
+  const minKey = (Object.keys(scores) as StatKey[])
+    .reduce((a, b) => (scores[a] < scores[b] ? a : b));
+
+  // ✅ 핵심 수정: 하위 티어 누적 제거
+  const lowerSum = tierDist
+    .slice(0, tierIdx)
+    .reduce((sum, t) => sum + t.pct, 0);
+
+  const topPct = 100 - lowerSum;
+
+  return { scores, total, tierIdx, mmr, maxKey, minKey, topPct };
 }
 
 // ── 서브 컴포넌트 ─────────────────────────────────────────────────────────────
@@ -99,8 +148,8 @@ const StatSlider: React.FC<{
   onChange: (key: StatKey, val: number) => void;
   score: number;
 }> = ({ config, value, onChange, score }) => {
-  const [inputText, setInputText] = React.useState('');
-  const [focused, setFocused] = React.useState(false);
+  const [inputText, setInputText] = useState('');
+  const [focused, setFocused] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputText(e.target.value);
@@ -111,15 +160,10 @@ const StatSlider: React.FC<{
     }
   };
 
-  const handleFocus = () => {
-    setFocused(true);
-    setInputText(String(value));
-  };
+  const handleFocus = () => { setFocused(true); setInputText(String(value)); };
+  const handleBlur = () => { setFocused(false); setInputText(''); };
 
-  const handleBlur = () => {
-    setFocused(false);
-    setInputText('');
-  };
+  const scoreColor = score >= 7 ? '#e05878' : score >= 5 ? '#7898f0' : score >= 3 ? '#6dba9a' : 'var(--accent)';
 
   return (
     <div className="mb-5">
@@ -128,7 +172,7 @@ const StatSlider: React.FC<{
           <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{config.label}</span>
           <span
             className="text-xs px-1.5 py-0.5 rounded"
-            style={{ backgroundColor: 'var(--bg-input)', color: 'var(--accent)', fontWeight: 700 }}
+            style={{ backgroundColor: 'var(--bg-input)', color: scoreColor, fontWeight: 700 }}
           >
             Lv.{score}
           </span>
@@ -159,7 +203,7 @@ const StatSlider: React.FC<{
         value={value}
         onChange={e => onChange(config.key, parseFloat(e.target.value))}
         className="w-full"
-        style={{ accentColor: 'var(--accent)' }}
+        style={{ accentColor: scoreColor }}
       />
       {config.note && (
         <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted, var(--text-secondary))' }}>
@@ -251,6 +295,79 @@ const TierBar: React.FC<{ tierIdx: number; total: number }> = ({ tierIdx, total 
   );
 };
 
+// ── 티어 분포도 컴포넌트 ──────────────────────────────────────────────────────
+
+const TierDistributionChart: React.FC<{
+  currentTierIdx: number;
+  data: typeof TIER_DISTRIBUTION;
+  onEdit: () => void;
+  isAdmin: boolean;
+}> = ({ currentTierIdx, data, onEdit, isAdmin }) => {
+  const maxPct = Math.max(...data.map(t => t.pct));
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-xs font-bold uppercase tracking-widest"
+          style={{ color: 'var(--text-secondary)' }}>
+          서버 티어 분포
+        </p>
+
+        {isAdmin && (
+          <button
+            onClick={onEdit}
+            className="text-xs px-2 py-1 rounded"
+            style={{ background: 'var(--bg-input)', color: 'var(--text-primary)' }}
+          >
+            ✏️ 시즌 수정
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        {data.map((item, i) => {
+          const isCurrent = i === currentTierIdx;
+          const barWidth = (item.pct / maxPct) * 100;
+
+          return (
+            <div key={item.tier} className="flex items-center gap-2">
+              <span className="text-xs w-16 text-right"
+                style={{
+                  color: isCurrent ? item.color : 'var(--text-secondary)',
+                  fontWeight: isCurrent ? 700 : 400,
+                }}>
+                {item.tier}
+              </span>
+
+              <div className="flex-1 h-2 rounded-full relative"
+                style={{ backgroundColor: 'var(--bg-input)' }}>
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${barWidth}%`,
+                    backgroundColor: isCurrent ? item.color : 'var(--border)',
+                  }}
+                />
+              </div>
+
+              <span className="text-xs w-10 text-right"
+                style={{
+                  color: isCurrent ? item.color : 'var(--text-secondary)',
+                }}>
+                {item.pct}%
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="text-xs mt-3" style={{ color: 'var(--text-secondary)' }}>
+        * 총 198,586명 기준 · 시즌마다 수정 가능
+      </p>
+    </div>
+  );
+};
+
 // ── 메인 페이지 ───────────────────────────────────────────────────────────────
 
 const defaultValues: Record<StatKey, number> = Object.fromEntries(
@@ -260,11 +377,16 @@ const defaultValues: Record<StatKey, number> = Object.fromEntries(
 export const MmrPage: React.FC = () => {
   const [values, setValues] = useState<Record<StatKey, number>>(defaultValues);
 
+  const [tierDist, setTierDist] = useState(getInitialTierDist);
+  const [editOpen, setEditOpen] = useState(false);
+
+  const { isLoggedIn } = useAuth();
+
   const handleChange = useCallback((key: StatKey, val: number) => {
     setValues(prev => ({ ...prev, [key]: val }));
   }, []);
 
-  const { scores, total, tierIdx, mmr, maxKey, minKey } = calcResult(values);
+  const { scores, total, tierIdx, mmr, maxKey, minKey, topPct } = calcResult(values, tierDist);
   const tierColor = TIER_COLORS[tierIdx];
 
   return (
@@ -313,7 +435,7 @@ export const MmrPage: React.FC = () => {
               <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: 'var(--text-secondary)' }}>
                 추정 결과
               </p>
-              <div className="flex items-end gap-4 mb-6">
+              <div className="flex items-end gap-6 mb-6">
                 <div>
                   <p className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>추정 MMR</p>
                   <p className="text-4xl font-bold" style={{ color: 'var(--text-primary)' }}>
@@ -324,6 +446,12 @@ export const MmrPage: React.FC = () => {
                   <p className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>추정 티어</p>
                   <p className="text-2xl font-bold" style={{ color: tierColor }}>
                     {TIERS[tierIdx]}
+                  </p>
+                </div>
+                <div className="mb-1 ml-auto">
+                  <p className="text-xs mb-1 text-right" style={{ color: 'var(--text-secondary)' }}>상위</p>
+                  <p className="text-2xl font-bold text-right" style={{ color: tierColor }}>
+                    {topPct.toFixed(2)}%
                   </p>
                 </div>
               </div>
@@ -367,6 +495,19 @@ export const MmrPage: React.FC = () => {
                 지표별 점수
               </p>
               <RadarChart scores={scores} />
+            </div>
+
+            {/* 서버 티어 분포 */}
+            <div
+              className="rounded-2xl p-5"
+              style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
+            >
+              <TierDistributionChart
+                currentTierIdx={tierIdx}
+                data={tierDist}
+                onEdit={() => setEditOpen(true)}
+                isAdmin={isLoggedIn}
+              />
             </div>
 
             {/* 티어별 기준 승률 */}
@@ -413,8 +554,104 @@ export const MmrPage: React.FC = () => {
 
         {/* 하단 안내 */}
         <p className="text-xs text-center mt-8" style={{ color: 'var(--text-secondary)' }}>
-          MMR은 공식 수치가 아닌 추정값이며, 실제 매칭 MMR과 다를 수 있습니다.
+          MMR은 공식 수치가 아닌 추정값이며, 실제 매칭 MMR과 다를 수 있습니다. 벤치마크는 이터니티 상위 플레이어 기록 및 공식 티어 분포 데이터를 기반으로 보정되었습니다.
         </p>
+
+        <SeasonEditModal
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          data={tierDist}
+          onSave={setTierDist}
+        />
+      </div>
+    </div>
+  );
+};
+
+const SeasonEditModal: React.FC<{
+  open: boolean;
+  onClose: () => void;
+  data: typeof TIER_DISTRIBUTION;
+  onSave: (d: typeof TIER_DISTRIBUTION) => void;
+}> = ({ open, onClose, data, onSave }) => {
+  const [temp, setTemp] = useState<typeof data>(() => data);
+
+  useEffect(() => {
+    if (open) setTemp(structuredClone(data));
+  }, [open, data]);
+
+  if (!open) return null;
+
+  const sum = temp.reduce((a, b) => a + b.pct, 0);
+  const valid = Math.abs(sum - 100) < 0.01;
+
+  const update = (i: number, pct: number) => {
+    if (isNaN(pct)) return;
+    const copy = [...temp];
+    copy[i] = { ...copy[i], pct };
+    setTemp(copy);
+  };
+
+  const save = () => {
+    if (!valid) return;
+
+    const cloned = structuredClone(temp);
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cloned));
+    onSave(cloned);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center">
+      <div className="bg-[var(--bg-card)] p-6 rounded-2xl w-[420px]">
+        <h2 className="text-sm font-bold mb-4">시즌 티어 분포 수정</h2>
+
+        <div className="space-y-2">
+          {temp.map((t, i) => (
+            <div key={t.tier} className="flex items-center gap-2">
+              <span className="text-xs w-20">{t.tier}</span>
+              <input
+                type="number"
+                value={t.pct}
+                onChange={e => {
+                  const v = parseFloat(e.target.value);
+                  update(i, isNaN(v) ? 0 : v);
+                }}
+                className="flex-1 px-2 py-1 text-sm rounded"
+              />
+            </div>
+          ))}
+        </div>
+
+        <p className="text-xs mt-3">
+          합계: {sum.toFixed(2)}%
+        </p>
+
+        <div className="flex gap-2 mt-4">
+          <button onClick={onClose} className="text-xs px-3 py-1">
+            취소
+          </button>
+
+          <button
+            onClick={() => {
+              localStorage.removeItem(STORAGE_KEY);
+              onSave(TIER_DISTRIBUTION);
+              onClose();
+            }}
+            className="text-xs px-3 py-1"
+          >
+            기본값
+          </button>
+
+          <button
+            disabled={!valid}
+            onClick={save}
+            className="text-xs px-3 py-1"
+          >
+            저장
+          </button>
+        </div>
       </div>
     </div>
   );
