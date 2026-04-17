@@ -297,3 +297,38 @@ export const REMOVE_TAG_FROM_PLAYLIST = gql`
   }
 `;
 
+export const GET_VOTE = gql`
+  query GetVote($voteId: String!) {
+    getVote(voteId: $voteId) {
+      voteId
+      title
+      options {
+        id
+        text
+        count
+      }
+    }
+  }
+`;
+
+export const ADD_OPTION = gql`
+  mutation AddOption($voteId: String!, $text: String!) {
+    addOption(voteId: $voteId, text: $text)
+  }
+`;
+
+export const VOTE = gql`
+  mutation Vote($voteId: String!, $optionId: String!) {
+    vote(voteId: $voteId, optionId: $optionId) {
+      id
+      voteId
+      createdAt
+    }
+  }
+`;
+
+export const DELETE_OPTION = gql`
+  mutation DeleteOption($voteId: String!, $optionId: String!) {
+    deleteOption(voteId: $voteId, optionId: $optionId)
+  }
+`;
