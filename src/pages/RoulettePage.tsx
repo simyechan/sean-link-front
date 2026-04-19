@@ -70,7 +70,6 @@ const ColorPicker: React.FC<{
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {/* 팔레트 */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, width: 152 }}>
         {PALETTE_COLORS.map(c => (
           <button
@@ -86,8 +85,6 @@ const ColorPicker: React.FC<{
           />
         ))}
       </div>
-
-      {/* 커스텀 RGB */}
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         <input
           type="color"
@@ -104,10 +101,7 @@ const ColorPicker: React.FC<{
             cursor: 'pointer',
           }}
         />
-
-        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-          custom
-        </span>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>custom</span>
       </div>
     </div>
   );
@@ -175,6 +169,181 @@ function drawWheel(canvas: HTMLCanvasElement, items: RouletteItem[], rotation: n
   ctx.stroke();
 }
 
+// ── 타이머 컴포넌트 ───────────────────────────────────────────────────────
+const TIMER_PRESETS = [
+  { label: '30초', m: 0, s: 30 },
+  { label: '1분', m: 1, s: 0 },
+  { label: '3분', m: 3, s: 0 },
+  { label: '5분', m: 5, s: 0 },
+];
+
+const TimerDisplay: React.FC<{
+  totalSeconds: number;
+  remaining: number;
+  running: boolean;
+  onStart: () => void;
+  onPause: () => void;
+  onReset: () => void;
+  onSetTime: (m: number, s: number) => void;
+}> = ({ totalSeconds, remaining, running, onStart, onPause, onReset, onSetTime }) => {
+  const [pickM, setPickM] = useState(1);
+  const [pickS, setPickS] = useState(0);
+  const [showPicker, setShowPicker] = useState(totalSeconds === 0);
+
+  const minutes = Math.floor(remaining / 60);
+  const seconds = remaining % 60;
+  const progress = totalSeconds > 0 ? remaining / totalSeconds : 0;
+  const isWarning = remaining <= 10 && remaining > 0;
+  const isDone = remaining === 0 && totalSeconds > 0;
+  const isIdle = totalSeconds === 0;
+
+  const size = 120;
+  const strokeWidth = 6;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const dashOffset = circumference * (1 - progress);
+  const ringColor = isDone ? '#ef4444' : isWarning ? '#f59e0b' : 'var(--accent)';
+
+  const handleSet = () => {
+    onSetTime(pickM, pickS);
+    setShowPicker(false);
+  };
+
+  return (
+    <div
+      className="flex flex-col items-center gap-3 p-4 rounded-2xl"
+      style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
+    >
+      <div className="flex items-center justify-between w-full">
+        <p className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>⏱ 타이머</p>
+        {!running && (
+          <button
+            onClick={() => setShowPicker(p => !p)}
+            className="text-xs px-2 py-0.5 rounded hover:opacity-70 transition-opacity"
+            style={{ color: 'var(--accent)', border: '1px solid var(--accent)' }}
+          >
+            {showPicker ? '닫기' : '설정'}
+          </button>
+        )}
+      </div>
+
+      {/* 시간 설정 피커 */}
+      {showPicker && (
+        <div className="w-full flex flex-col gap-2">
+          {/* 프리셋 */}
+          <div className="flex gap-1.5 flex-wrap">
+            {TIMER_PRESETS.map(p => (
+              <button
+                key={p.label}
+                onClick={() => { setPickM(p.m); setPickS(p.s); }}
+                style={{
+                  padding: '3px 8px',
+                  borderRadius: 7,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  border: '1px solid var(--border)',
+                  background: pickM === p.m && pickS === p.s ? 'var(--accent)' : 'var(--bg-input)',
+                  color: pickM === p.m && pickS === p.s ? '#1a1a1a' : 'var(--text-primary)',
+                }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          {/* 분:초 직접 입력 */}
+          <div className="flex items-center gap-2">
+            <input
+              type="number" min={0} max={99} value={pickM}
+              onChange={e => setPickM(Math.max(0, Math.min(99, parseInt(e.target.value) || 0)))}
+              style={{ ...inputStyle, width: 44, textAlign: 'center', padding: '4px', borderRadius: 8, fontSize: 16, fontWeight: 900 }}
+              className="focus:outline-none"
+            />
+            <span style={{ fontWeight: 900, color: 'var(--text-secondary)' }}>:</span>
+            <input
+              type="number" min={0} max={59} value={pickS}
+              onChange={e => setPickS(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
+              style={{ ...inputStyle, width: 44, textAlign: 'center', padding: '4px', borderRadius: 8, fontSize: 16, fontWeight: 900 }}
+              className="focus:outline-none"
+            />
+            <button
+              onClick={handleSet}
+              disabled={pickM === 0 && pickS === 0}
+              style={pickM === 0 && pickS === 0 ? { ...btnPrimary, opacity: 0.4, cursor: 'not-allowed', padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700 } : { ...btnPrimary, padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700 }}
+            >
+              적용
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 원형 프로그레스 */}
+      {!isIdle && (
+        <>
+          <div className="relative flex items-center justify-center">
+            <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+              <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke="var(--border)" strokeWidth={strokeWidth} />
+              <circle
+                cx={size/2} cy={size/2} r={radius}
+                fill="none" stroke={ringColor} strokeWidth={strokeWidth}
+                strokeLinecap="round"
+                strokeDasharray={circumference}
+                strokeDashoffset={dashOffset}
+                style={{ transition: 'stroke-dashoffset 0.5s linear, stroke 0.3s ease' }}
+              />
+            </svg>
+            <div className="absolute flex flex-col items-center">
+              {isDone ? (
+                <span style={{ fontSize: 28, fontWeight: 900, color: '#ef4444' }}>⏰</span>
+              ) : (
+                <span style={{
+                  fontSize: 26, fontWeight: 900,
+                  fontVariantNumeric: 'tabular-nums',
+                  color: isWarning ? '#f59e0b' : 'var(--text-primary)',
+                  transition: 'color 0.3s ease',
+                  letterSpacing: '-0.5px',
+                }}>
+                  {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {isDone && (
+            <p className="text-xs font-bold" style={{ color: '#ef4444' }}>시간 종료!</p>
+          )}
+
+          {/* 컨트롤 버튼 */}
+          <div className="flex gap-2">
+            {running ? (
+              <button onClick={onPause} style={btnOutline} className="px-3 py-1.5 rounded-lg text-xs font-bold hover:opacity-80 transition-opacity">
+                ⏸ 일시정지
+              </button>
+            ) : (
+              <button
+                onClick={onStart}
+                disabled={remaining === 0}
+                style={remaining === 0 ? { ...btnPrimary, opacity: 0.4, cursor: 'not-allowed', padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700 } : { ...btnPrimary, padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700 }}
+              >
+                ▶ 시작
+              </button>
+            )}
+            <button onClick={onReset} style={btnDanger} className="px-3 py-1.5 rounded-lg text-xs font-bold hover:opacity-80 transition-opacity">
+              ↺ 리셋
+            </button>
+          </div>
+        </>
+      )}
+
+      {isIdle && !showPicker && (
+        <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
+          위 <span style={{ color: 'var(--accent)' }}>설정</span> 버튼으로 시간을 지정하세요
+        </p>
+      )}
+    </div>
+  );
+};
+
 // ── 메인 컴포넌트 ─────────────────────────────────────────────────────────
 export const RoulettePage: React.FC = () => {
   const [view, setView] = useState<'setup' | 'spin'>('setup');
@@ -192,6 +361,58 @@ export const RoulettePage: React.FC = () => {
   const [winner, setWinner] = useState<string | null>(null);
   const [showWinner, setShowWinner] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
+
+  // ── 타이머 상태 ──────────────────────────────────────────────────────────
+  const [timerEnabled, setTimerEnabled] = useState(false);
+  const [timerMinutes, setTimerMinutes] = useState(1);
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [timerRemaining, setTimerRemaining] = useState(0);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const timerTotalRef = useRef(0);
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const timerTotal = timerMinutes * 60 + timerSeconds;
+
+  const startTimer = useCallback(() => {
+    if (timerRemaining <= 0) return;
+    setTimerRunning(true);
+  }, [timerRemaining]);
+
+  const pauseTimer = useCallback(() => {
+    setTimerRunning(false);
+  }, []);
+
+  const resetTimer = useCallback(() => {
+    setTimerRunning(false);
+    setTimerRemaining(timerTotalRef.current);
+  }, []);
+
+  // 타이머 tick
+  useEffect(() => {
+    if (!timerRunning) {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      return;
+    }
+    timerIntervalRef.current = setInterval(() => {
+      setTimerRemaining(prev => {
+        if (prev <= 1) {
+          setTimerRunning(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    };
+  }, [timerRunning]);
+
+  // 스핀 뷰 진입 시 타이머 초기화
+  const initTimer = useCallback((total: number) => {
+    timerTotalRef.current = total;
+    setTimerRemaining(total);
+    setTimerRunning(false);
+  }, []);
 
   const [donationEnabled, setDonationEnabled] = useState(() => {
     try {
@@ -269,13 +490,10 @@ export const RoulettePage: React.FC = () => {
 
     if (donation === 'true') {
       setDonationEnabled(true);
-
-      // ✅ URL에서 파라미터 제거
       params.delete('donation');
       const newUrl =
         window.location.pathname +
         (params.toString() ? `?${params.toString()}` : '');
-
       window.history.replaceState({}, '', newUrl);
     }
   }, []);
@@ -284,7 +502,6 @@ export const RoulettePage: React.FC = () => {
     if (!socketRef.current) return;
     const params = new URLSearchParams(window.location.search);
     const rouletteId = params.get('channelId') ?? '';
-
     socketRef.current.emit('settings:update', {
       rouletteId,
       donationEnabled,
@@ -292,19 +509,16 @@ export const RoulettePage: React.FC = () => {
     });
   }, [donationEnabled, donationRules]);
 
-  // 로컬스토리지 저장
   useEffect(() => {
     try { localStorage.setItem(LS_KEY, JSON.stringify(items)); } catch {}
   }, [items]);
 
-  // 캔버스 다시 그리기
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     drawWheel(canvas, view === 'spin' ? spinItems : items, rotationRef.current);
   }, [items, spinItems, view]);
 
-  // 팔레트 팝오버 외부 클릭 시 닫기
   useEffect(() => {
     const handleClickOutside = () => {
       if (focusId?.startsWith('color-')) setFocusId(null);
@@ -314,8 +528,7 @@ export const RoulettePage: React.FC = () => {
   }, [focusId]);
 
   // ── 설정 핸들러 ──────────────────────────────────────────────────────────
-  const handleAdd = () =>
-    setItems(prev => [...prev, makeItem(prev.length)]);
+  const handleAdd = () => setItems(prev => [...prev, makeItem(prev.length)]);
 
   const handleClearAll = () => {
     if (!window.confirm('모든 항목을 지우시겠어요?')) return;
@@ -365,6 +578,11 @@ export const RoulettePage: React.FC = () => {
     setView('spin');
     setWinner(null);
     setShowWinner(false);
+
+    // 타이머 초기화
+    if (timerEnabled) {
+      initTimer(timerTotal);
+    }
   };
 
   // ── 룰렛 돌리기 ───────────────────────────────────────────────────────────
@@ -489,7 +707,7 @@ export const RoulettePage: React.FC = () => {
                 <span className="text-sm font-bold flex-shrink-0 w-12 text-right" style={{ color: 'var(--text-primary)' }}>
                   항목 {idx + 1}
                 </span>
-                {/* 색상 선택 — 팔레트 팝오버 */}
+                {/* 색상 선택 */}
                 <div
                   className="relative flex-shrink-0"
                   onMouseDown={e => e.stopPropagation()}
@@ -594,6 +812,123 @@ export const RoulettePage: React.FC = () => {
             항목 추가
           </button>
 
+          {/* ── 타이머 설정 ─────────────────────────────────────────────────── */}
+          <div className="mb-6 p-4 rounded-xl" style={{ backgroundColor: 'var(--bg-card)' }}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                ⏱ 타이머
+              </span>
+              <button
+                onClick={() => setTimerEnabled(prev => !prev)}
+                style={timerEnabled ? btnPrimary : btnOutline}
+                className="px-4 py-1.5 rounded-lg text-sm font-bold hover:opacity-80 transition-opacity"
+              >
+                {timerEnabled ? 'ON' : 'OFF'}
+              </button>
+            </div>
+
+            {timerEnabled && (
+              <div className="flex items-center gap-3 mt-2">
+                {/* 분 */}
+                <div className="flex flex-col items-center gap-1">
+                  <button
+                    onClick={() => setTimerMinutes(m => Math.min(99, m + 1))}
+                    className="w-8 h-7 rounded-lg text-sm font-bold hover:opacity-70 transition-opacity"
+                    style={{ ...btnOutline, padding: 0 }}
+                  >
+                    ▲
+                  </button>
+                  <input
+                    type="number"
+                    min={0}
+                    max={99}
+                    value={timerMinutes}
+                    onChange={e => setTimerMinutes(Math.max(0, Math.min(99, parseInt(e.target.value) || 0)))}
+                    style={{ ...inputStyle, width: 52, textAlign: 'center', padding: '6px 4px', borderRadius: 8, fontSize: 20, fontWeight: 900 }}
+                    className="focus:outline-none"
+                  />
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>분</span>
+                  <button
+                    onClick={() => setTimerMinutes(m => Math.max(0, m - 1))}
+                    className="w-8 h-7 rounded-lg text-sm font-bold hover:opacity-70 transition-opacity"
+                    style={{ ...btnOutline, padding: 0 }}
+                  >
+                    ▼
+                  </button>
+                </div>
+
+                <span style={{ fontSize: 24, fontWeight: 900, color: 'var(--text-secondary)', marginBottom: 18 }}>:</span>
+
+                {/* 초 */}
+                <div className="flex flex-col items-center gap-1">
+                  <button
+                    onClick={() => setTimerSeconds(s => s >= 55 ? 0 : s + 5)}
+                    className="w-8 h-7 rounded-lg text-sm font-bold hover:opacity-70 transition-opacity"
+                    style={{ ...btnOutline, padding: 0 }}
+                  >
+                    ▲
+                  </button>
+                  <input
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={timerSeconds}
+                    onChange={e => setTimerSeconds(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
+                    style={{ ...inputStyle, width: 52, textAlign: 'center', padding: '6px 4px', borderRadius: 8, fontSize: 20, fontWeight: 900 }}
+                    className="focus:outline-none"
+                  />
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>초</span>
+                  <button
+                    onClick={() => setTimerSeconds(s => s <= 4 ? 55 : s - 5)}
+                    className="w-8 h-7 rounded-lg text-sm font-bold hover:opacity-70 transition-opacity"
+                    style={{ ...btnOutline, padding: 0 }}
+                  >
+                    ▼
+                  </button>
+                </div>
+
+                {/* 프리셋 버튼 */}
+                <div className="flex flex-col gap-1.5 ml-2">
+                  {[
+                    { label: '30초', m: 0, s: 30 },
+                    { label: '1분', m: 1, s: 0 },
+                    { label: '3분', m: 3, s: 0 },
+                    { label: '5분', m: 5, s: 0 },
+                  ].map(preset => (
+                    <button
+                      key={preset.label}
+                      onClick={() => { setTimerMinutes(preset.m); setTimerSeconds(preset.s); }}
+                      style={{
+                        ...inputStyle,
+                        padding: '3px 10px',
+                        borderRadius: 8,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        background:
+                          timerMinutes === preset.m && timerSeconds === preset.s
+                            ? 'var(--accent)'
+                            : 'var(--bg-input)',
+                        color:
+                          timerMinutes === preset.m && timerSeconds === preset.s
+                            ? '#1a1a1a'
+                            : 'var(--text-primary)',
+                      }}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {timerEnabled && timerTotal === 0 && (
+              <p className="mt-2 text-xs" style={{ color: '#f59e0b' }}>
+                ⚠ 시간을 1초 이상 설정해주세요
+              </p>
+            )}
+          </div>
+
           {/* 후원 설정 */}
           <div className="mb-8 p-4 rounded-xl" style={{ backgroundColor: 'var(--bg-card)' }}>
             <div className="flex items-center justify-between mb-3">
@@ -623,11 +958,7 @@ export const RoulettePage: React.FC = () => {
                     className="w-20 px-2 py-1 rounded-lg text-sm"
                     style={inputStyle}
                   />
-
-                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    치즈당
-                  </span>
-
+                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>치즈당</span>
                   <input
                     type="number"
                     min={1}
@@ -640,15 +971,9 @@ export const RoulettePage: React.FC = () => {
                     className="w-16 px-2 py-1 rounded-lg text-sm"
                     style={inputStyle}
                   />
-
-                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    표
-                  </span>
-
+                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>표</span>
                   <button
-                    onClick={() => {
-                      setDonationRules(donationRules.filter((_, i) => i !== idx));
-                    }}
+                    onClick={() => setDonationRules(donationRules.filter((_, i) => i !== idx))}
                     className="text-xs px-2"
                     style={{ color: '#ff8a8a' }}
                   >
@@ -656,12 +981,8 @@ export const RoulettePage: React.FC = () => {
                   </button>
                 </div>
               ))}
-
-              {/* ✅ 이게 너가 찾던 버튼 */}
               <button
-                onClick={() => {
-                  setDonationRules([...donationRules, { unit: 1000, votes: 1 }]);
-                }}
+                onClick={() => setDonationRules([...donationRules, { unit: 1000, votes: 1 }])}
                 className="text-xs px-2 py-1 rounded"
                 style={btnOutline}
               >
@@ -687,9 +1008,7 @@ export const RoulettePage: React.FC = () => {
                   </div>
                 ))}
                 {items.filter(i => i.name.trim()).length === 0 && (
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                    항목을 추가하면 예시가 표시돼요
-                  </p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>항목을 추가하면 예시가 표시돼요</p>
                 )}
               </div>
               <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
@@ -717,9 +1036,9 @@ export const RoulettePage: React.FC = () => {
           <div className="flex justify-center">
             <button
               onClick={handleStart}
-              disabled={items.filter(i => i.name.trim()).length < 2}
+              disabled={items.filter(i => i.name.trim()).length < 2 || (timerEnabled && timerTotal === 0)}
               style={
-                items.filter(i => i.name.trim()).length < 2
+                items.filter(i => i.name.trim()).length < 2 || (timerEnabled && timerTotal === 0)
                   ? { ...btnPrimary, opacity: 0.4, cursor: 'not-allowed' }
                   : btnPrimary
               }
@@ -778,7 +1097,13 @@ export const RoulettePage: React.FC = () => {
             {/* 버튼 */}
             <div className="flex gap-3 w-full max-w-sm">
               <button
-                onClick={() => { setView('setup'); setWinner(null); setShowWinner(false); setHistory([]); }}
+                onClick={() => {
+                  setView('setup');
+                  setWinner(null);
+                  setShowWinner(false);
+                  setHistory([]);
+                  setTimerRunning(false);
+                }}
                 style={btnOutline}
                 className="flex-1 py-3 rounded-xl text-sm font-bold hover:opacity-80 transition-opacity"
               >
@@ -806,37 +1131,57 @@ export const RoulettePage: React.FC = () => {
             )}
           </div>
 
-          {/* 히스토리 */}
-          {history.length > 0 && (
-            <div className="w-full lg:w-56 flex-shrink-0">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>당첨 기록</h3>
-                <button
-                  onClick={() => setHistory([])}
-                  className="text-xs hover:opacity-70 transition-opacity"
-                  style={{ color: 'var(--text-muted)' }}
-                >
-                  초기화
-                </button>
-              </div>
-              <div className="space-y-1.5 max-h-80 overflow-y-auto">
-                {history.map((h, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg"
-                    style={{ backgroundColor: 'var(--bg-card)' }}
+          {/* 오른쪽 사이드 패널 */}
+          <div className="flex flex-col gap-4 w-full lg:w-56 flex-shrink-0">
+
+            {/* 타이머 — spin 화면 (항상 표시) */}
+            <TimerDisplay
+              totalSeconds={timerTotalRef.current}
+              remaining={timerRemaining}
+              running={timerRunning}
+              onStart={startTimer}
+              onPause={pauseTimer}
+              onReset={resetTimer}
+              onSetTime={(m, s) => {
+                const total = m * 60 + s;
+                timerTotalRef.current = total;
+                setTimerRemaining(total);
+                setTimerRunning(false);
+              }}
+            />
+
+            {/* 히스토리 */}
+            {history.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>당첨 기록</h3>
+                  <button
+                    onClick={() => setHistory([])}
+                    className="text-xs hover:opacity-70 transition-opacity"
+                    style={{ color: 'var(--text-muted)' }}
                   >
-                    <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>
-                      {i + 1}
-                    </span>
-                    <span className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
-                      {h}
-                    </span>
-                  </div>
-                ))}
+                    초기화
+                  </button>
+                </div>
+                <div className="space-y-1.5 max-h-80 overflow-y-auto">
+                  {history.map((h, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                      style={{ backgroundColor: 'var(--bg-card)' }}
+                    >
+                      <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>
+                        {i + 1}
+                      </span>
+                      <span className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                        {h}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>
