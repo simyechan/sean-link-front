@@ -267,7 +267,7 @@ export const RoulettePage: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     const donation = params.get('donation');
 
-    if (donation === 'success') {
+    if (donation === 'true') {
       setDonationEnabled(true);
 
       // ✅ URL에서 파라미터 제거
@@ -446,13 +446,10 @@ export const RoulettePage: React.FC = () => {
   };
 
   const handleToggleDonation = () => {
-
     if (!donationEnabled) {
-      setDonationEnabled(true);
       window.location.replace(`/api/auth/login?scope=donation`);
       return;
     }
-
     setDonationEnabled(false);
   };
 
