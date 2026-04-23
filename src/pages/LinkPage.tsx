@@ -17,7 +17,7 @@ export default function LinkPage() {
     { id: 4, name: "치지직", url: "https://chzzk.naver.com/93f06c016e073c01b6bdb4098a99b1a7" },
     { id: 5, name: "팬카페", url: "https://cafe.naver.com/kisean" },
     { id: 6, name: "팬심", url: "https://fancim.me/celeb/profile.aspx?url=122554" },
-    { id: 7, name: "니케 솔로레이드 덱 도우미(문제시 삭제)", url: "https://www.nikkesolo.com" },
+    { id: 7, name: "니케 솔로레이드 덱 도우미", url: "https://www.nikkesolo.com" },
   ]);
 
   const getColorByUrl = (url: string) => {
