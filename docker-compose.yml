@@ -20,7 +20,7 @@ services:
 networks:
   sean-network:
     external: true
-    name: sean-network
+    name: sean-link-server_sean-network
 
   # 필요 시 HTTPS를 위한 Certbot + Nginx Proxy (주석 해제)
   # certbot:
