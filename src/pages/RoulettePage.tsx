@@ -478,7 +478,7 @@ export const RoulettePage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const socket = io();
+    const socket = io({ transports: ['websocket'] });
     socketRef.current = socket;
 
     const params = new URLSearchParams(window.location.search);
