@@ -531,7 +531,28 @@ export const RoulettePage: React.FC = () => {
   const handleClearAll = () => {
     if (!window.confirm('모든 항목을 지우시겠어요?')) return;
     setItems([makeItem(0), makeItem(1)]);
+
+    // 서버 초기화
+    const params = new URLSearchParams(window.location.search);
+    const rouletteId = params.get('channelId') ?? '';
+    fetch('/api/donation/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rouletteId }),
+    });
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const rouletteId = params.get('channelId') ?? '';
+    if (!rouletteId) return;
+
+    fetch('/api/donation/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rouletteId, items }),
+    });
+  }, [items]);
 
   const handleDelete = (id: string) =>
     setItems(prev => prev.filter(i => i.id !== id));
