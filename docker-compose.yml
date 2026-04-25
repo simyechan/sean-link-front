@@ -1,5 +1,4 @@
 version: "3.9"
-
 services:
   frontend:
     image: ghcr.io/simyechan/sean-link-front:latest
@@ -9,12 +8,19 @@ services:
       - "3001:80"
     environment:
       - NODE_ENV=production
+    networks:
+      - sean-network
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost/health"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
+
+networks:
+  sean-network:
+    external: true
+    name: sean-network
 
   # 필요 시 HTTPS를 위한 Certbot + Nginx Proxy (주석 해제)
   # certbot:
