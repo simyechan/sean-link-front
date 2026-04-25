@@ -464,27 +464,6 @@ export const RoulettePage: React.FC = () => {
   }, [donationEnabled]);
 
   useEffect(() => {
-    const socket = io();
-    socketRef.current = socket;
-
-    const params = new URLSearchParams(window.location.search);
-    const rouletteId = params.get('channelId');
-
-    if (!rouletteId) {
-      socket.disconnect();
-      return;
-    }
-
-    socket.emit('join', { rouletteId });
-    socket.on('roulette:item_update', handleUpdate);
-
-    return () => {
-      socket.off('roulette:item_update', handleUpdate);
-      socket.disconnect();
-    };
-  }, [handleUpdate]);
-
-  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const donation = params.get('donation');
 
@@ -499,15 +478,29 @@ export const RoulettePage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!socketRef.current) return;
+    const socket = io();
+    socketRef.current = socket;
+
     const params = new URLSearchParams(window.location.search);
     const rouletteId = params.get('channelId') ?? '';
-    socketRef.current.emit('settings:update', {
-      rouletteId,
-      donationEnabled,
-      donationRules,
+
+    socket.emit('join', { rouletteId });
+
+    // ✅ 연결되면 바로 settings도 전송
+    socket.on('connect', () => {
+      socket.emit('settings:update', {
+        rouletteId,
+        donationEnabled,
+        donationRules,
+      });
     });
-  }, [donationEnabled, donationRules]);
+
+    socket.on('roulette:item_update', handleUpdate);
+    return () => {
+      socket.off('roulette:item_update', handleUpdate);
+      socket.disconnect();
+    };
+  }, [handleUpdate, donationEnabled, donationRules]);
 
   useEffect(() => {
     try { localStorage.setItem(LS_KEY, JSON.stringify(items)); } catch {}
