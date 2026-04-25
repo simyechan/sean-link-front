@@ -484,16 +484,21 @@ export const RoulettePage: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     const rouletteId = params.get('channelId') ?? '';
 
-    socket.emit('join', { rouletteId });
-
-    // ✅ 연결되면 바로 settings도 전송
-    socket.on('connect', () => {
+    const sendSettings = () => {
+      socket.emit('join', { rouletteId });
       socket.emit('settings:update', {
         rouletteId,
         donationEnabled,
         donationRules,
       });
-    });
+    };
+
+    socket.on('connect', sendSettings);
+
+    // ✅ 이미 연결돼 있으면 즉시 전송
+    if (socket.connected) {
+      sendSettings();
+    }
 
     socket.on('roulette:item_update', handleUpdate);
     return () => {
