@@ -269,6 +269,13 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
   const handleVideoClick = (video: VideoModel, e: React.MouseEvent) => {
     e.preventDefault();
     fetchVideoById({ variables: { id: video.id } });
+
+    // 썸네일 없으면 외부에서 열기
+    if (!video.thumbnail) {
+      window.open(video.videoUrl ?? '#', '_blank');
+      return;
+    }
+
     setPlayingVideo(video);
   };
 
