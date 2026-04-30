@@ -10,6 +10,7 @@ import {
 import { PlaylistModel, VideoModel, PlaylistSortBy, SortOrder } from '../types/models';
 import { useAuth } from '../context/AuthContext';
 import { TagEditor } from '../components/TagEditor';
+import { VideoPlayerModal } from '../components/VideoPlayerModal';
 
 const formatViewCount = (count: number) => {
   if (count >= 10000) return `${(count / 10000).toFixed(1)}만`;
@@ -235,6 +236,7 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
   const [searchKeyword, setSearchKeyword] = useState('');
   const [searchTagFilter, setSearchTagFilter] = useState('');
   const [videoPage, setVideoPage] = useState(1);
+  const [playingVideo, setPlayingVideo] = useState<VideoModel | null>(null);
 
   // 플레이리스트 내 영상 목록 페이지 (클라이언트 사이드)
   const [listPage, setListPage] = useState(1);
@@ -264,8 +266,10 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
   const searchVideos: VideoModel[] = videoData?.getAllVideos ?? [];
   const hasNext = searchVideos.length >= VIDEO_LIMIT;
 
-  const handleVideoClick = (videoId: string, e: React.MouseEvent) => {
-    fetchVideoById({ variables: { id: videoId } });
+  const handleVideoClick = (video: VideoModel, e: React.MouseEvent) => {
+    e.preventDefault();
+    fetchVideoById({ variables: { id: video.id } });
+    setPlayingVideo(video);
   };
 
   const handleAddVideo = async () => {
@@ -418,9 +422,9 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
                 <div className="flex-1 min-w-0">
                   <a
                     href={video.videoUrl ?? '#'}
+                    onClick={e => { e.preventDefault(); handleVideoClick(video, e); }}
                     target="_blank"
                     rel="noreferrer"
-                    onClick={e => handleVideoClick(video.id, e)}
                     className="block text-xs sm:text-sm font-medium line-clamp-2 hover:opacity-70 transition-opacity"
                     style={{ color: 'var(--text-primary)' }}
                   >
@@ -467,6 +471,9 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
               다음 →
             </button>
           </div>
+        )}
+        {playingVideo && (
+          <VideoPlayerModal video={playingVideo} onClose={() => setPlayingVideo(null)} />
         )}
       </div>
     </div>

@@ -8,6 +8,7 @@ import {
 import { VideoModel, VideoSortBy, SortOrder } from '../types/models';
 import { useAuth } from '../context/AuthContext';
 import { TagEditor } from '../components/TagEditor';
+import { VideoPlayerModal } from '../components/VideoPlayerModal';
 
 const formatDuration = (seconds?: number) => {
   if (!seconds) return '';
@@ -254,6 +255,8 @@ export const VideosPage: React.FC = () => {
   const [addTags, setAddTags] = useState('');
   const [addError, setAddError] = useState('');
 
+  const [playingVideo, setPlayingVideo] = useState<VideoModel | null>(null);
+
   const { data, loading, error, refetch } = useQuery(GET_ALL_VIDEOS, {
     variables: {
       keyword: keyword || undefined,
@@ -295,7 +298,9 @@ export const VideosPage: React.FC = () => {
   };
 
   const handleVideoClick = (video: VideoModel, e: React.MouseEvent) => {
+    e.preventDefault();
     fetchVideoById({ variables: { id: video.id } });
+    setPlayingVideo(video);
   };
 
   return (
@@ -457,6 +462,9 @@ export const VideosPage: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+      {playingVideo && (
+        <VideoPlayerModal video={playingVideo} onClose={() => setPlayingVideo(null)} />
       )}
     </div>
   );
