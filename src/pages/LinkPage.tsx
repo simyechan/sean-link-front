@@ -18,6 +18,7 @@ export default function LinkPage() {
     { id: 5, name: "팬카페", url: "https://cafe.naver.com/kisean" },
     { id: 6, name: "팬심", url: "https://fancim.me/celeb/profile.aspx?url=122554" },
     { id: 7, name: "니케 솔로레이드 덱 도우미", url: "https://www.nikkesolo.com" },
+    { id: 8, name: "Blablalink", url: "https://www.blablalink.com"}
   ]);
 
   const getColorByUrl = (url: string) => {
