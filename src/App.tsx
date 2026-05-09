@@ -13,6 +13,7 @@ import { MmrPage } from './pages/MmrPage';
 import { RoulettePage } from './pages/RoulettePage';
 import LinkPage from './pages/LinkPage';
 import VotePage from './pages/VotePage';
+import { SchedulePage } from './pages/SchedulePage';
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <>
@@ -28,6 +29,10 @@ export default function App() {
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Navigate to="/videos" replace />} />
+            <Route 
+              path="/schedule"
+              element={<AppLayout><SchedulePage /></AppLayout>}
+            />
             <Route
               path="/videos"
               element={<AppLayout><VideosPage /></AppLayout>}
