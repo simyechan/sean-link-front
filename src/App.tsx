@@ -29,10 +29,10 @@ export default function App() {
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Navigate to="/videos" replace />} />
-            <Route 
+            {/* <Route 
               path="/schedule"
               element={<AppLayout><SchedulePage /></AppLayout>}
-            />
+            /> */}
             <Route
               path="/videos"
               element={<AppLayout><VideosPage /></AppLayout>}
