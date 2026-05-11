@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const NAV_ITEMS = [
-  // { path: '/schedule', label: '방송 일정'},
+  { path: '/schedule', label: '방송 일정'},
   { path: '/videos', label: '비디오' },
   { path: '/playlists', label: '플레이리스트' },
   { path: '/tags', label: '태그 관리' },

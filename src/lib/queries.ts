@@ -332,3 +332,31 @@ export const DELETE_OPTION = gql`
     deleteOption(voteId: $voteId, optionId: $optionId)
   }
 `;
+
+export const GET_SCHEDULES = gql`
+  query GetSchedules {
+    getSchedules {
+      id
+      date
+      time
+      content
+    }
+  }
+`;
+
+export const SAVE_SCHEDULES = gql`
+  mutation SaveSchedules(
+    $entries: [ScheduleEntryInput!]!
+    $deleteIds: [String!]
+  ) {
+    saveSchedules(
+      entries: $entries
+      deleteIds: $deleteIds
+    ) {
+      id
+      date
+      time
+      content
+    }
+  }
+`;
