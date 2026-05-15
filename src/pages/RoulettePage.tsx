@@ -477,35 +477,47 @@ export const RoulettePage: React.FC = () => {
     }
   }, []);
 
+  const donationEnabledRef = useRef(donationEnabled);
+  const donationRulesRef = useRef(donationRules);
+  useEffect(() => { donationEnabledRef.current = donationEnabled; }, [donationEnabled]);
+  useEffect(() => { donationRulesRef.current = donationRules; }, [donationRules]);
+
+  // ① 소켓은 마운트 시 1회만 생성
   useEffect(() => {
     const socket = io({ transports: ['websocket'] });
     socketRef.current = socket;
-
     const params = new URLSearchParams(window.location.search);
     const rouletteId = params.get('channelId') ?? '';
-
     const sendSettings = () => {
       socket.emit('join', { rouletteId });
       socket.emit('settings:update', {
         rouletteId,
-        donationEnabled,
-        donationRules,
+        donationEnabled: donationEnabledRef.current,
+        donationRules: donationRulesRef.current,
       });
     };
-
     socket.on('connect', sendSettings);
-
-    // ✅ 이미 연결돼 있으면 즉시 전송
-    if (socket.connected) {
-      sendSettings();
-    }
-
+    if (socket.connected) sendSettings();
     socket.on('roulette:item_update', handleUpdate);
     return () => {
       socket.off('roulette:item_update', handleUpdate);
       socket.disconnect();
+      socketRef.current = null;
     };
-  }, [handleUpdate, donationEnabled, donationRules]);
+  }, [handleUpdate]);
+
+  // ② 설정 변경 시 기존 소켓으로만 emit
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket?.connected) return;
+    const params = new URLSearchParams(window.location.search);
+    const rouletteId = params.get('channelId') ?? '';
+    socket.emit('settings:update', {
+      rouletteId,
+      donationEnabled,
+      donationRules,
+    });
+  }, [donationEnabled, donationRules]);
 
   useEffect(() => {
     try { localStorage.setItem(LS_KEY, JSON.stringify(items)); } catch {}
@@ -525,6 +537,23 @@ export const RoulettePage: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [focusId]);
 
+  // ✅ [수정 1] donation/sync 디바운스 500ms
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const rouletteId = params.get('channelId') ?? '';
+    if (!rouletteId) return;
+
+    const timer = setTimeout(() => {
+      fetch('/api/donation/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rouletteId, items }),
+      });
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [items]);
+
   // ── 설정 핸들러 ──────────────────────────────────────────────────────────
   const handleAdd = () => setItems(prev => [...prev, makeItem(prev.length)]);
 
@@ -532,7 +561,6 @@ export const RoulettePage: React.FC = () => {
     if (!window.confirm('모든 항목을 지우시겠어요?')) return;
     setItems([makeItem(0), makeItem(1)]);
 
-    // 서버 초기화
     const params = new URLSearchParams(window.location.search);
     const rouletteId = params.get('channelId') ?? '';
     fetch('/api/donation/reset', {
@@ -541,18 +569,6 @@ export const RoulettePage: React.FC = () => {
       body: JSON.stringify({ rouletteId }),
     });
   };
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const rouletteId = params.get('channelId') ?? '';
-    if (!rouletteId) return;
-
-    fetch('/api/donation/sync', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rouletteId, items }),
-    });
-  }, [items]);
 
   const handleDelete = (id: string) =>
     setItems(prev => prev.filter(i => i.id !== id));
@@ -598,7 +614,6 @@ export const RoulettePage: React.FC = () => {
     setWinner(null);
     setShowWinner(false);
 
-    // 타이머 초기화
     if (timerEnabled) {
       initTimer(timerTotal);
     }
@@ -965,14 +980,17 @@ export const RoulettePage: React.FC = () => {
             <div className="space-y-2 mb-3">
               {donationRules.map((rule, idx) => (
                 <div key={idx} className="flex items-center gap-2">
+                  {/* ✅ [수정 2] 직접 변이 대신 map으로 불변 업데이트 */}
                   <input
                     type="number"
                     min={1}
                     value={rule.unit}
                     onChange={(e) => {
-                      const next = [...donationRules];
-                      next[idx].unit = Number(e.target.value);
-                      setDonationRules(next);
+                      setDonationRules(prev =>
+                        prev.map((r, i) =>
+                          i === idx ? { ...r, unit: Number(e.target.value) } : r
+                        )
+                      );
                     }}
                     className="w-20 px-2 py-1 rounded-lg text-sm"
                     style={inputStyle}
@@ -983,16 +1001,18 @@ export const RoulettePage: React.FC = () => {
                     min={1}
                     value={rule.votes}
                     onChange={(e) => {
-                      const next = [...donationRules];
-                      next[idx].votes = Number(e.target.value);
-                      setDonationRules(next);
+                      setDonationRules(prev =>
+                        prev.map((r, i) =>
+                          i === idx ? { ...r, votes: Number(e.target.value) } : r
+                        )
+                      );
                     }}
                     className="w-16 px-2 py-1 rounded-lg text-sm"
                     style={inputStyle}
                   />
                   <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>표</span>
                   <button
-                    onClick={() => setDonationRules(donationRules.filter((_, i) => i !== idx))}
+                    onClick={() => setDonationRules(prev => prev.filter((_, i) => i !== idx))}
                     className="text-xs px-2"
                     style={{ color: '#ff8a8a' }}
                   >
@@ -1001,7 +1021,7 @@ export const RoulettePage: React.FC = () => {
                 </div>
               ))}
               <button
-                onClick={() => setDonationRules([...donationRules, { unit: 1000, votes: 1 }])}
+                onClick={() => setDonationRules(prev => [...prev, { unit: 1000, votes: 1 }])}
                 className="text-xs px-2 py-1 rounded"
                 style={btnOutline}
               >
