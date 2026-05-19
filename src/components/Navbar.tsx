@@ -3,13 +3,11 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const NAV_ITEMS = [
-  { path: '/schedule', label: '방송 일정'},
   { path: '/videos', label: '비디오' },
   { path: '/playlists', label: '플레이리스트' },
   { path: '/tags', label: '태그 관리' },
   { path: '/report', label: '신고/문의' },
   { path: '/roulette', label: '룰렛' },
-  { path: '/mmr', label: 'MMR 추정기' },
   { path: '/links', label: '링크 모음' },
   { path: '/vote', label: '투표' },
 ];
