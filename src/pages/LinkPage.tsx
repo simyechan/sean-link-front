@@ -18,7 +18,8 @@ export default function LinkPage() {
     { id: 5, name: "팬카페", url: "https://cafe.naver.com/kisean" },
     { id: 6, name: "팬심", url: "https://fancim.me/celeb/profile.aspx?url=122554" },
     { id: 7, name: "NIDECK", url: "https://www.nikkesolo.com" },
-    { id: 8, name: "Blablalink", url: "https://www.blablalink.com"}
+    { id: 8, name: "Blablalink", url: "https://www.blablalink.com"},
+    { id: 9, name: "방송 일정", url: "https://cafe.naver.com/f-e/cafes/31238905/menus/1"}
   ]);
 
   const getColorByUrl = (url: string) => {
