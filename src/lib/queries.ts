@@ -13,6 +13,7 @@ export const TAG_FIELDS = gql`
 export const VIDEO_FIELDS = gql`
   fragment VideoFields on VideoModel {
     id
+    clipCreatedAt
     videoId
     videoUrl
     videoTitle

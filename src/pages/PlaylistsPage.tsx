@@ -236,10 +236,13 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
   const [searchKeyword, setSearchKeyword] = useState('');
   const [searchTagFilter, setSearchTagFilter] = useState('');
   const [videoPage, setVideoPage] = useState(1);
-  const [playingVideo, setPlayingVideo] = useState<VideoModel | null>(null);
+  const [playingIndex, setPlayingIndex] = useState<number | null>(null);
 
   // 플레이리스트 내 영상 목록 페이지 (클라이언트 사이드)
   const [listPage, setListPage] = useState(1);
+
+  type VideoSortOption = 'DEFAULT' | 'VIEW_DESC' | 'VIEW_ASC' | 'DATE_DESC' | 'DATE_ASC';
+  const [videoSort, setVideoSort] = useState<VideoSortOption>('DEFAULT');
 
   const playlist: PlaylistModel | undefined = data?.getPlaylistById;
 
@@ -270,13 +273,13 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
     e.preventDefault();
     fetchVideoById({ variables: { id: video.id } });
 
-    // 썸네일 없으면 외부에서 열기
     if (!video.thumbnail) {
       window.open(video.videoUrl ?? '#', '_blank');
       return;
     }
 
-    setPlayingVideo(video);
+    const sortedIdx = sortedVideos.findIndex(v => v.id === video.id);
+    setPlayingIndex(sortedIdx >= 0 ? sortedIdx : 0);
   };
 
   const handleAddVideo = async () => {
@@ -309,7 +312,16 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
   // 현재 페이지에 표시할 영상 슬라이스 (클라이언트 페이지네이션)
   const totalVideos = playlist.videos.length;
   const totalListPages = Math.max(1, Math.ceil(totalVideos / PLAYLIST_VIDEO_PAGE_SIZE));
-  const pagedVideos = playlist.videos.slice(
+  const sortedVideos = [...playlist.videos].sort((a, b) => {
+    switch (videoSort) {
+      case 'VIEW_DESC': return b.viewCount - a.viewCount;
+      case 'VIEW_ASC':  return a.viewCount - b.viewCount;
+      case 'DATE_DESC': return new Date(b.clipCreatedAt ?? 0).getTime() - new Date(a.clipCreatedAt ?? 0).getTime();
+      case 'DATE_ASC':  return new Date(a.clipCreatedAt ?? 0).getTime() - new Date(b.clipCreatedAt ?? 0).getTime();
+      default:          return 0; // 기본 플레이리스트 순서 유지
+    }
+  });
+  const pagedVideos = sortedVideos.slice(
     (listPage - 1) * PLAYLIST_VIDEO_PAGE_SIZE,
     listPage * PLAYLIST_VIDEO_PAGE_SIZE,
   );
@@ -406,6 +418,31 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
           )}
         </div>
 
+        {/* 정렬 */}
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            영상 {totalVideos}개
+          </span>
+          <div className="relative">
+            <select
+              value={videoSort}
+              onChange={e => { setVideoSort(e.target.value as VideoSortOption); setListPage(1); }}
+              style={{
+                backgroundColor: 'var(--bg-card)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-secondary)',
+              }}
+              className="pl-3 pr-7 py-1.5 rounded-lg text-xs focus:outline-none appearance-none cursor-pointer"
+            >
+              <option value="DEFAULT">기본순</option>
+              <option value="VIEW_DESC">인기순</option>
+              <option value="VIEW_ASC">인기 역순</option>
+              <option value="DATE_DESC">최신순</option>
+              <option value="DATE_ASC">오래된순</option>
+            </select>
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-xs" style={{ color: 'var(--text-muted)' }}>▾</span>
+          </div>
+        </div>
         {/* 영상 목록 */}
         <div className="space-y-1.5">
           {pagedVideos.map((video, idx) => {
@@ -479,8 +516,14 @@ const PlaylistDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onBa
             </button>
           </div>
         )}
-        {playingVideo && (
-          <VideoPlayerModal video={playingVideo} onClose={() => setPlayingVideo(null)} />
+        {playingIndex !== null && playlist && (
+          <VideoPlayerModal
+            video={sortedVideos[playingIndex]}
+            onClose={() => setPlayingIndex(null)}
+            playlist={sortedVideos}
+            currentIndex={playingIndex}
+            onChangeIndex={setPlayingIndex}
+          />
         )}
       </div>
     </div>

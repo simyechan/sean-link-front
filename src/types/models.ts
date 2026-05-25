@@ -16,6 +16,7 @@ export interface TagModel {
 
 export interface VideoModel {
   id: string;
+  clipCreatedAt?: string;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
