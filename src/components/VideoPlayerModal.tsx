@@ -101,12 +101,25 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             <p className="text-sm font-semibold line-clamp-2" style={{ color: 'var(--text-primary)' }}>
               {video.videoTitle ?? '제목 없음'}
             </p>
-            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-              {video.channelName}
-              {isPlaylistMode && (
-                <span className="ml-2">{currentIndex + 1} / {playlist!.length}</span>
+            <div className="flex items-center gap-3 mt-1 flex-wrap">
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                {video.channelName}
+                {isPlaylistMode && (
+                  <span className="ml-2">{currentIndex + 1} / {playlist!.length}</span>
+                )}
+              </p>
+              {video.videoUrl && (
+                <a
+                  href={video.videoUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1 text-xs hover:opacity-80 transition-opacity"
+                  style={{ color: 'var(--accent)' }}
+                >
+                  ↗ 치지직에서 보기
+                </a>
               )}
-            </p>
+            </div>
           </div>
 
           {isPlaylistMode && (
