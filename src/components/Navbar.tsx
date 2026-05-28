@@ -6,10 +6,10 @@ const NAV_ITEMS = [
   { path: '/videos', label: '비디오' },
   { path: '/playlists', label: '플레이리스트' },
   { path: '/tags', label: '태그 관리' },
-  { path: '/report', label: '신고/문의' },
   { path: '/roulette', label: '룰렛' },
   { path: '/links', label: '링크 모음' },
   { path: '/vote', label: '투표' },
+  { path: '/report', label: '신고/문의' },
 ];
 
 export const Navbar: React.FC = () => {
