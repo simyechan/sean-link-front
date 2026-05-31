@@ -1,25 +1,18 @@
-// pinball.types.ts
-
-// 마블 하나의 상태
 export interface Marble {
   id: number
   name: string
-  body: any        // box2d b2Body (box2d-wasm 타입이 any-heavy라서)
+  body: any
   color: string
   isWinner: boolean
 }
 
-// 게임 전체 상태
-export type GameStatus = 'idle' | 'running' | 'finished'
+export type GamePhase = 'idle' | 'preview' | 'running' | 'finished'
 
-// usePinball 훅의 반환값
 export interface PinballState {
-  status: GameStatus
+  phase: GamePhase
   winner: string | null
-  marbles: Marble[]
 }
 
-// PinballGame 컴포넌트 props
 export interface PinballGameProps {
   names: string[]
   mapIndex?: number
@@ -27,9 +20,16 @@ export interface PinballGameProps {
   speed?: number
   useSkills?: boolean
   onWinner?: (name: string) => void
+  onPhaseChange?: (phase: GamePhase) => void
 }
 
-// 월드 설정
+export interface PinballGameHandle {
+  shuffle: () => void
+  startGame: () => void
+  reset: () => void
+  changeMap: (map: number) => void
+}
+
 export interface WorldConfig {
   width: number
   height: number

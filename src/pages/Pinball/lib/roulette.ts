@@ -294,7 +294,7 @@ export class Roulette extends EventTarget {
     });
   }
 
-  private _loadMap() {
+  protected _loadMap() {
     if (!this._stage) {
       throw new Error('No map has been selected');
     }
