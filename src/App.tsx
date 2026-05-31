@@ -12,6 +12,7 @@ import { ReportPage } from './pages/ReportPage';
 import { RoulettePage } from './pages/RoulettePage';
 import LinkPage from './pages/LinkPage';
 import VotePage from './pages/VotePage';
+import Pinball from './pages/Pinball';
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <>
@@ -46,6 +47,10 @@ export default function App() {
             <Route 
               path="/roulette"
               element={<AppLayout><RoulettePage /></AppLayout>}
+            />
+            <Route 
+              path="/pinball"
+              element={<AppLayout><Pinball /></AppLayout>}
             />
             <Route 
               path="/links"

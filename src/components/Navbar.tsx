@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { path: '/playlists', label: '플레이리스트' },
   { path: '/tags', label: '태그 관리' },
   { path: '/roulette', label: '룰렛' },
+  { path: '/pinball', label: '핀볼' },
   { path: '/links', label: '링크 모음' },
   { path: '/vote', label: '투표' },
   { path: '/report', label: '신고/문의' },
