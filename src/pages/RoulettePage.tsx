@@ -684,7 +684,20 @@ export const RoulettePage: React.FC = () => {
   };
 
   const handleToggleDonation = () => {
-    setDonationEnabled((prev: boolean) => !prev);
+    const next = !donationEnabled;
+    setDonationEnabled(next);
+
+    // useEffect 타이밍 의존 없이 즉시 전송
+    const socket = socketRef.current;
+    if (socket?.connected) {
+      const params = new URLSearchParams(window.location.search);
+      const rouletteId = params.get('channelId') ?? '';
+      socket.emit('settings:update', {
+        rouletteId,
+        donationEnabled: next,
+        donationRules: donationRulesRef.current,
+      });
+    }
   };
 
   // ── Setup View ─────────────────────────────────────────────────────────────
