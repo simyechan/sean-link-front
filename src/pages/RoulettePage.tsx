@@ -463,20 +463,6 @@ export const RoulettePage: React.FC = () => {
     localStorage.setItem('donation_enabled', JSON.stringify(donationEnabled));
   }, [donationEnabled]);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const donation = params.get('donation');
-
-    if (donation === 'true') {
-      setDonationEnabled(true);
-      params.delete('donation');
-      const newUrl =
-        window.location.pathname +
-        (params.toString() ? `?${params.toString()}` : '');
-      window.history.replaceState({}, '', newUrl);
-    }
-  }, []);
-
   const donationEnabledRef = useRef(donationEnabled);
   const donationRulesRef = useRef(donationRules);
   useEffect(() => { donationEnabledRef.current = donationEnabled; }, [donationEnabled]);
@@ -698,11 +684,7 @@ export const RoulettePage: React.FC = () => {
   };
 
   const handleToggleDonation = () => {
-    if (!donationEnabled) {
-      window.location.replace(`/api/auth/login?scope=donation`);
-      return;
-    }
-    setDonationEnabled(false);
+    setDonationEnabled((prev: boolean) => !prev);
   };
 
   // ── Setup View ─────────────────────────────────────────────────────────────
