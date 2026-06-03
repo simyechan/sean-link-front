@@ -683,18 +683,43 @@ export const RoulettePage: React.FC = () => {
     setShowWinner(false);
   };
 
-  const handleToggleDonation = () => {
-    const next = !donationEnabled;
-    setDonationEnabled(next);
+  const [showDonationConsent, setShowDonationConsent] = useState(false);
 
-    // useEffect 타이밍 의존 없이 즉시 전송
+  const handleToggleDonation = () => {
+    if (!donationEnabled) {
+      const consented = localStorage.getItem('donation_consented');
+      if (consented === 'true') {
+        // 이미 동의한 경우 바로 ON
+        setDonationEnabled(true);
+        const socket = socketRef.current;
+        if (socket?.connected) {
+          const params = new URLSearchParams(window.location.search);
+          const rouletteId = params.get('channelId') ?? '';
+          socket.emit('settings:update', {
+            rouletteId,
+            donationEnabled: true,
+            donationRules: donationRulesRef.current,
+          });
+        }
+      } else {
+        setShowDonationConsent(true);
+      }
+    } else {
+      setDonationEnabled(false);
+    }
+  };
+
+  const handleConsentAgree = () => {
+    localStorage.setItem('donation_consented', 'true');
+    setShowDonationConsent(false);
+    setDonationEnabled(true);
     const socket = socketRef.current;
     if (socket?.connected) {
       const params = new URLSearchParams(window.location.search);
       const rouletteId = params.get('channelId') ?? '';
       socket.emit('settings:update', {
         rouletteId,
-        donationEnabled: next,
+        donationEnabled: true,
         donationRules: donationRulesRef.current,
       });
     }
@@ -702,8 +727,52 @@ export const RoulettePage: React.FC = () => {
 
   // ── Setup View ─────────────────────────────────────────────────────────────
   if (view === 'setup') {
-    return (
-      <div className="min-h-screen pt-14" style={{ backgroundColor: 'var(--bg-base)' }}>
+  return (
+    <div className="min-h-screen pt-14" style={{ backgroundColor: 'var(--bg-base)' }}>
+
+      {/* 동의 모달 */}
+      {showDonationConsent && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
+          onClick={() => setShowDonationConsent(false)}
+        >
+          <div
+            className="mx-4 rounded-2xl p-6 max-w-sm w-full"
+            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 className="text-base font-black mb-3" style={{ color: 'var(--text-primary)' }}>
+              후원 반영 동의
+            </h2>
+            <p className="text-sm mb-2" style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+              후원 반영 기능을 활성화하면 아래 내용에 동의하는 것으로 간주됩니다.
+            </p>
+            <ul className="text-sm mb-5 space-y-1.5" style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+              <li>• 치지직 후원 메시지가 실시간으로 룰렛 항목에 반영됩니다.</li>
+              <li>• 후원 데이터는 룰렛 진행 중에만 사용되며 저장되지 않습니다.</li>
+              <li>• 언제든지 OFF로 비활성화할 수 있습니다.</li>
+            </ul>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDonationConsent(false)}
+                style={btnOutline}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold hover:opacity-80 transition-opacity"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleConsentAgree}
+                style={btnPrimary}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold hover:opacity-80 transition-opacity"
+              >
+                동의하고 시작
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
         <div className="max-w-2xl mx-auto px-4 pt-12 pb-10">
 
           {/* 상단 액션 */}
