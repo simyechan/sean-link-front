@@ -447,6 +447,7 @@ export const RoulettePage: React.FC = () => {
   const socketRef = useRef<any>(null);
 
   const handleUpdate = useCallback((data: any) => {
+    console.log('handleUpdate 수신:', data);
     const updated = data.item;
     setItems(prev => {
       const idx = prev.findIndex(i => i.id === updated.id);
