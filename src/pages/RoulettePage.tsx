@@ -540,6 +540,20 @@ export const RoulettePage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [items]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const donation = params.get('donation');
+
+    if (donation === 'true') {
+      setDonationEnabled(true);
+      params.delete('donation');
+      const newUrl =
+        window.location.pathname +
+        (params.toString() ? `?${params.toString()}` : '');
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
+
   // ── 설정 핸들러 ──────────────────────────────────────────────────────────
   const handleAdd = () => setItems(prev => [...prev, makeItem(prev.length)]);
 
@@ -689,18 +703,7 @@ export const RoulettePage: React.FC = () => {
     if (!donationEnabled) {
       const consented = localStorage.getItem('donation_consented');
       if (consented === 'true') {
-        // 이미 동의한 경우 바로 ON
-        setDonationEnabled(true);
-        const socket = socketRef.current;
-        if (socket?.connected) {
-          const params = new URLSearchParams(window.location.search);
-          const rouletteId = params.get('channelId') ?? '';
-          socket.emit('settings:update', {
-            rouletteId,
-            donationEnabled: true,
-            donationRules: donationRulesRef.current,
-          });
-        }
+        window.location.href = '/api/auth/login?scope=donation';
       } else {
         setShowDonationConsent(true);
       }
@@ -712,17 +715,7 @@ export const RoulettePage: React.FC = () => {
   const handleConsentAgree = () => {
     localStorage.setItem('donation_consented', 'true');
     setShowDonationConsent(false);
-    setDonationEnabled(true);
-    const socket = socketRef.current;
-    if (socket?.connected) {
-      const params = new URLSearchParams(window.location.search);
-      const rouletteId = params.get('channelId') ?? '';
-      socket.emit('settings:update', {
-        rouletteId,
-        donationEnabled: true,
-        donationRules: donationRulesRef.current,
-      });
-    }
+    window.location.href = '/api/auth/login?scope=donation';
   };
 
   // ── Setup View ─────────────────────────────────────────────────────────────
