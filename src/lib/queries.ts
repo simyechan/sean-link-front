@@ -378,3 +378,15 @@ export const GET_WEEKLY_RANKING = gql`
     }
   }
 `;
+
+export const GET_LATEST_YOUTUBE_VIDEO = gql`
+  query GetLatestYoutubeVideo {
+    getLatestYoutubeVideo {
+      videoId
+      title
+      thumbnail
+      publishedAt
+      url
+    }
+  }
+`;

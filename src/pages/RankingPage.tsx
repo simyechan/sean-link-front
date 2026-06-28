@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@apollo/client';
 import { useLazyQuery } from '@apollo/client';
-import { GET_WEEKLY_RANKING, GET_VIDEO_BY_ID } from '../lib/queries';
+import { GET_WEEKLY_RANKING, GET_VIDEO_BY_ID, GET_LATEST_YOUTUBE_VIDEO } from '../lib/queries';
 import { VideoModel } from '../types/models';
 import { VideoPlayerModal } from '../components/VideoPlayerModal';
 
@@ -9,6 +9,8 @@ export const RankingPage: React.FC = () => {
   const { data, loading, error } = useQuery(GET_WEEKLY_RANKING);
   const [fetchVideoById] = useLazyQuery(GET_VIDEO_BY_ID, { fetchPolicy: 'network-only' });
   const [playingVideo, setPlayingVideo] = React.useState<VideoModel | null>(null);
+  const { data: ytData } = useQuery(GET_LATEST_YOUTUBE_VIDEO);
+  const latestYoutubeVideo = ytData?.getLatestYoutubeVideo;
 
   const rankingVideos: VideoModel[] = data?.getWeeklyRankingVideos ?? [];
 
@@ -27,12 +29,15 @@ export const RankingPage: React.FC = () => {
     <div className="min-h-screen pt-20" style={{ backgroundColor: 'var(--bg-base)' }}>
       <div className="max-w-screen-2xl mx-auto px-4 py-6">
 
-        <div className="flex items-center gap-2 mb-6">
+        <div className="flex items-center gap-2 mb-1">
           <span className="text-xl">🔥</span>
           <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
             이번 주 인기 클립
           </h1>
         </div>
+        <p className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>
+          매주 일요일 자정에 갱신돼요 (1주일간 조회수 증가량 기준)
+        </p>
 
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5">
@@ -125,7 +130,59 @@ export const RankingPage: React.FC = () => {
             ))}
           </div>
         )}
-      </div>
+
+        {latestYoutubeVideo && (
+          <div className="mt-10">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-lg">📺</span>
+              <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
+                최신 유튜브 영상
+              </h2>
+            </div>
+            <a
+              href={latestYoutubeVideo.url}
+              target="_blank"
+              rel="noreferrer"
+              className="group block max-w-md mx-auto"
+            >
+              <div
+                className="relative aspect-video rounded-lg overflow-hidden mb-2"
+                style={{ backgroundColor: 'var(--bg-card)' }}
+              >
+                <img
+                  src={latestYoutubeVideo.thumbnail}
+                  alt={latestYoutubeVideo.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  onError={(e) => {
+                    e.currentTarget.src = `https://i.ytimg.com/vi/${latestYoutubeVideo.videoId}/hqdefault.jpg`;
+                  }}
+                />
+                <span
+                  className="absolute top-2 left-2 text-white text-xs px-1.5 py-0.5 rounded font-bold"
+                  style={{ backgroundColor: '#cc2200' }}
+                >
+                  YouTube
+                </span>
+                <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors">
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 duration-200"
+                    style={{ backgroundColor: 'var(--accent)' }}
+                  >
+                    <span className="text-black text-lg ml-0.5">▶</span>
+                  </div>
+                </div>
+              </div>
+              <p
+                className="text-sm font-medium leading-snug line-clamp-2 group-hover:opacity-70 transition-opacity"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                {latestYoutubeVideo.title}
+              </p>
+            </a>
+          </div>
+        )}
+
+      </div>{/* max-w-screen-2xl 닫힘 */}
 
       {playingVideo && (
         <VideoPlayerModal video={playingVideo} onClose={() => setPlayingVideo(null)} />
