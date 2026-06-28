@@ -361,3 +361,20 @@ export const SAVE_SCHEDULES = gql`
     }
   }
 `;
+
+export const GET_WEEKLY_RANKING = gql`
+  query GetWeeklyRankingVideos {
+    getWeeklyRankingVideos {
+      id
+      videoId
+      videoUrl
+      videoTitle
+      thumbnail
+      duration
+      channelName
+      channelImageUrl
+      viewCount
+      weeklyReadIncrease
+    }
+  }
+`;

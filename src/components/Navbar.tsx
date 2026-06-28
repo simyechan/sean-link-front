@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const NAV_ITEMS = [
+  { path: '/ranking', label: '랭킹' },
   { path: '/videos', label: '비디오' },
   { path: '/playlists', label: '플레이리스트' },
   { path: '/tags', label: '태그 관리' },
@@ -26,7 +27,7 @@ export const Navbar: React.FC = () => {
       >
         <div className="max-w-screen-2xl mx-auto px-4 h-14 flex items-center gap-3">
           {/* 로고 + 브랜드명 */}
-          <Link to="/videos" className="flex items-center gap-1.5 flex-shrink-0">
+          <Link to="/ranking" className="flex items-center gap-1.5 flex-shrink-0">
             <img
               src="/logo.png"
               alt="SeanLink Logo"

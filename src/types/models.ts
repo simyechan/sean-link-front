@@ -30,6 +30,8 @@ export interface VideoModel {
   channelImageUrl?: string;
   viewCount: number;
   platform?: Platform;
+  chzzkReadCount?: number;
+  weeklyReadIncrease?: number;
   tags: TagModel[];
 }
 

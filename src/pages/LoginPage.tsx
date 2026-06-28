@@ -10,13 +10,13 @@ export const LoginPage: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  if (isLoggedIn) { navigate('/videos'); return null; }
+  if (isLoggedIn) { navigate('/ranking'); return null; }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setError(''); setLoading(true);
     try {
       await login(loginId, password);
-      navigate('/videos');
+      navigate('/ranking');
     } catch (err: any) {
       setError(err.message || '로그인에 실패했어요.');
     } finally { setLoading(false); }

@@ -4,6 +4,7 @@ import { Pagination } from '../components/Pagination';
 import {
   GET_ALL_VIDEOS, GET_VIDEO_BY_ID, GET_ALL_TAGS, DELETE_VIDEO, ADD_VIDEO,
   ADD_TAG_TO_VIDEO, REMOVE_TAG_FROM_VIDEO,
+  GET_WEEKLY_RANKING,
 } from '../lib/queries';
 import { VideoModel, VideoSortBy, SortOrder } from '../types/models';
 import { useAuth } from '../context/AuthContext';
